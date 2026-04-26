@@ -19,6 +19,7 @@
  *   type: import('../data/questionTypes.js').QuestionType,
  *   text: string,
  *   deck: string,
+ *   deckIcon: string|null,
  *   options: string[],
  *   correctAnswers: import('../data/game.js').CorrectAnswer[],
  *   answerMedia: object[],
@@ -44,6 +45,7 @@ const MOCK_QUESTIONS = /** @type {GameQuestion[]} */ (
 		type: q.type,
 		text: q.text,
 		deck: q.deck,
+		deckIcon: null,
 		options: q.answers,
 		correctAnswers: q.correctAnswers,
 		answerMedia: q.answers.map(() => ({})),
@@ -115,6 +117,7 @@ function dbRowToQuestion(row) {
 		type: row.type,
 		text: row.question_text,
 		deck: row.decks?.name ?? '',
+		deckIcon: row.decks?.icon ?? null,
 		options: row.options_json ?? [],
 		correctAnswers: row.correct_answers_json ?? [],
 		answerMedia: row.answer_media_json ?? [],
@@ -126,7 +129,7 @@ async function fetchQuestionsForDecks(deckIds) {
 	if (!supabase || !deckIds.length) return MOCK_QUESTIONS;
 	const { data } = await supabase
 		.from('questions')
-		.select('*, decks(name)')
+		.select('*, decks(name, icon)')
 		.in('deck_id', deckIds);
 	const questions = (data ?? []).map(dbRowToQuestion);
 	return questions.length > 0 ? questions : MOCK_QUESTIONS;
@@ -470,7 +473,7 @@ export async function loadGame(code) {
 			.order('turn_order'),
 		supabase
 			.from('game_rounds')
-			.select('*, questions(*, decks(name))')
+			.select('*, questions(*, decks(name, icon))')
 			.eq('id', gameRow.current_round_id)
 			.single(),
 		supabase

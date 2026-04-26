@@ -1,15 +1,26 @@
 <script>
+	import { onMount } from 'svelte';
 	import { CircleDot } from 'lucide-svelte';
 	import { QUESTION_TYPES } from '../data/questionTypes.js';
+	import LucideIcon from './LucideIcon.svelte';
 
 	/**
-	 * @type {{ questionType: import('../data/questionTypes.js').QuestionType, deck: string }}
+	 * @type {{ questionType: import('../data/questionTypes.js').QuestionType, deck: string, deckIcon?: string|null }}
 	 */
-	let { questionType, deck } = $props();
+	let { questionType, deck, deckIcon = null } = $props();
+
+	/** @type {((id: string|null|undefined) => Array<[string, Record<string, string>]>)|null} */
+	let getDeckIconNode = $state(null);
 
 	const typeConfig = $derived(
 		QUESTION_TYPES[questionType] ?? QUESTION_TYPES.standard,
 	);
+	const deckIconNode = $derived(deckIcon ? getDeckIconNode?.(deckIcon) : null);
+
+	onMount(async () => {
+		const icons = await import('../lib/deckIcons.js');
+		getDeckIconNode = icons.getDeckIconNode;
+	});
 </script>
 
 <dl class="question-meta">
@@ -21,7 +32,11 @@
 
 	<dt><span class="question-meta__title">Deck:</span></dt>
 	<dd>
-		<CircleDot />
+		{#if deckIconNode}
+			<LucideIcon name={deckIcon} iconNode={deckIconNode} />
+		{:else}
+			<CircleDot />
+		{/if}
 		<span class="question-meta__value">{deck}</span>
 	</dd>
 </dl>

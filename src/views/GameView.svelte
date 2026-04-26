@@ -128,7 +128,7 @@
 		/>
 
 		{#if question}
-			<QuestionMeta questionType={question.type} deck={question.deck} />
+			<QuestionMeta questionType={question.type} deck={question.deck} deckIcon={question.deckIcon} />
 
 			<QuestionWheel
 				questionType={question.type}
