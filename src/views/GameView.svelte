@@ -44,14 +44,20 @@
 
 	const roundIsOver = $derived(checkRoundOver());
 
-	const seatRotation = $derived(((4 - (currentPlayer?.seatPosition ?? 0) + 8) % 8) * 45);
+	function getSeatRotation(/** @type {number} */ seatPosition) {
+		return ((seatPosition + 4) % 8) * 45;
+	}
+
+	const seatRotation = $derived(
+		currentPlayer ? getSeatRotation(currentPlayer.seatPosition) : 0,
+	);
 
 	const lastPlayer = $derived(
 		game.players.find((p) => p.id === game.currentRound?.lastPlayerId) ?? null,
 	);
 
 	const reviewSeatRotation = $derived(
-		lastPlayer ? ((4 - lastPlayer.seatPosition + 8) % 8) * 45 : 0,
+		lastPlayer ? getSeatRotation(lastPlayer.seatPosition) : 0,
 	);
 
 	const pendingBlobLabel = $derived(
