@@ -31,3 +31,30 @@
 >
 	{answerLabel}
 </button>
+
+<style>
+	.answer-popover {
+		border: 3px solid var(--orange-700);
+		border-radius: 1rem;
+		max-width: min(28rem, calc(100vw - 2rem));
+		padding: 1.25rem 1.75rem;
+		background-color: hsl(0 0% 100%);
+		color: var(--grayscale-900);
+		font-family: 'Yanone Kaffeesatz', sans-serif;
+		font-size: clamp(2rem, 8vw, 4rem);
+		font-weight: 700;
+		line-height: 1.05;
+		text-align: center;
+		box-shadow: 0 1rem 2rem hsl(0 0% 0% / 0.25);
+		cursor: pointer;
+	}
+
+	.answer-popover[data-answer-kind='color'] {
+		background-color: var(--answer-background-color);
+		color: contrast-color(var(--answer-background-color));
+	}
+
+	.answer-popover::backdrop {
+		background-color: hsl(0 0% 0% / 0.25);
+	}
+</style>

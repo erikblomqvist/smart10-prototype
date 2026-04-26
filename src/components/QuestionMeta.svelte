@@ -25,3 +25,41 @@
 		<span class="question-meta__value">{deck}</span>
 	</dd>
 </dl>
+
+<style>
+	.question-meta {
+		position: fixed;
+		bottom: 0;
+		left: 50%;
+		display: grid;
+		grid-template-columns: repeat(4, auto);
+		align-items: center;
+		gap: 1em;
+		margin: 0;
+		border-radius: 0.5em;
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
+		border: 3px solid var(--orange-700);
+		border-bottom: 0;
+		padding: 0.5em 1em;
+		background-color: hsl(0 0% 100%);
+		transform: translateX(-50%);
+	}
+
+	dt {
+		color: var(--grayscale-700);
+		font-weight: 600;
+	}
+
+	dd {
+		display: flex;
+		align-items: center;
+		gap: 0.5em;
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	.question-meta-type {
+		color: var(--question-color);
+	}
+</style>
