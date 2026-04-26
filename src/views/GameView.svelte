@@ -115,7 +115,11 @@
 </script>
 
 {#if game.status === 'playing'}
-	<main class="main--game" data-question-type={questionTypeConfig?.cssToken}>
+	<main
+		class="main--game"
+		data-question-type={questionTypeConfig?.cssToken}
+		style:--current-player-color={currentPlayer ? `var(--${currentPlayer.color})` : null}
+	>
 		<GameMenu
 			{currentPlayer}
 			players={game.players}

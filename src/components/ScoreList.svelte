@@ -1,9 +1,10 @@
 <script>
 	import { _ } from 'svelte-i18n';
+	import { getPlayerIconComponent } from '../lib/playerIcons.js';
 
 	/**
 	 * @type {{
-	 *   players: { name: string, status: string, roundScore: number }[],
+	 *   players: { name: string, icon: string, color: string, status: string, roundScore: number }[],
 	 * }}
 	 */
 	let { players } = $props();
@@ -11,7 +12,13 @@
 
 <ol class="score-list">
 	{#each players as player}
+		{@const Icon = getPlayerIconComponent(player.icon)}
 		<li class="score-list__item" data-player-state={player.status}>
+			{#if Icon}
+				<span class="score-list__icon" style:--player-ring="var(--{player.color})" aria-hidden="true">
+					<Icon size={14} />
+				</span>
+			{/if}
 			<span class="score-list__player">{player.name}</span>
 			<span class="score-list__status">
 				{#if player.status === 'active'}
@@ -40,13 +47,25 @@
 
 	.score-list__item {
 		display: grid;
-		grid-template-columns: 1fr auto;
-		gap: 0.125rem 0.75rem;
+		grid-template-columns: auto 1fr auto;
+		gap: 0.125rem 0.5rem;
 		align-items: center;
 		border: 2px solid var(--grayscale-200);
 		border-radius: 0.5rem;
 		padding: 0.625rem 0.75rem;
 		background-color: var(--grayscale-100);
+	}
+
+	.score-list__icon {
+		display: grid;
+		place-items: center;
+		grid-row: span 3;
+		border: 2px solid var(--player-ring, transparent);
+		border-radius: 50%;
+		width: 1.75rem;
+		height: 1.75rem;
+		color: var(--grayscale-700);
+		flex-shrink: 0;
 	}
 
 	.score-list__player {

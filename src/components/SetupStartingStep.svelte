@@ -30,7 +30,7 @@
 				onclick={() => (startingPlayerIdx = idx)}
 				type="button"
 			>
-				<span class="starting-card__icon" aria-hidden="true">
+				<span class="starting-card__icon" style:--player-ring="var(--{player.color})" aria-hidden="true">
 					{#if Icon}
 						<Icon size={20} />
 					{/if}
@@ -90,6 +90,10 @@
 		display: grid;
 		place-items: center;
 		flex-shrink: 0;
+		border: 2px solid var(--player-ring, transparent);
+		border-radius: 50%;
+		width: 2rem;
+		height: 2rem;
 	}
 
 	.starting-card__name {

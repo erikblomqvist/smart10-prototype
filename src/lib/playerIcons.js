@@ -29,3 +29,17 @@ export const PLAYER_ICONS = [
 export function getPlayerIconComponent(id) {
 	return PLAYER_ICONS.find((i) => i.id === id)?.component ?? null;
 }
+
+/** @type {Array<{ id: string }>} */
+export const PLAYER_COLORS = [
+	{ id: 'player-color-1' },
+	{ id: 'player-color-2' },
+	{ id: 'player-color-3' },
+	{ id: 'player-color-4' },
+	{ id: 'player-color-5' },
+	{ id: 'player-color-6' },
+	{ id: 'player-color-7' },
+	{ id: 'player-color-8' },
+	{ id: 'player-color-9' },
+	{ id: 'player-color-10' },
+];

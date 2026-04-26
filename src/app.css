@@ -62,6 +62,17 @@
 	--grayscale-800: hsl(0 0% 26%);
 	--grayscale-900: hsl(0 0% 16%);
 
+	--player-color-1: hsl(4 80% 55%);
+	--player-color-2: hsl(210 80% 55%);
+	--player-color-3: hsl(142 60% 45%);
+	--player-color-4: hsl(48 95% 55%);
+	--player-color-5: hsl(275 70% 60%);
+	--player-color-6: hsl(330 80% 65%);
+	--player-color-7: hsl(180 65% 45%);
+	--player-color-8: hsl(82 65% 48%);
+	--player-color-9: hsl(240 70% 60%);
+	--player-color-10: hsl(35 100% 55%);
+
 	--orange-100: hsl(35 100% 95%);
 	--orange-200: hsl(35 100% 88%);
 	--orange-300: hsl(35 100% 76%);
@@ -96,6 +107,12 @@ main.main--game {
 	container-type: size;
 	container-name: body;
 	padding-block-end: var(--question-meta-space);
+	background: linear-gradient(
+		to bottom,
+		hsl(from var(--current-player-color, var(--orange-500)) h s calc(l + 8)),
+		hsl(from var(--current-player-color, var(--orange-500)) h s calc(l - 5))
+	);
+	transition: background 0.5s ease-in-out;
 }
 
 main.main--setup {

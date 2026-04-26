@@ -30,7 +30,11 @@
 			<Menu class="game-menu__icon" />
 		{/if}
 		{#if CurrentPlayerIcon && currentPlayer}
-			<span class="game-menu__player-icon" aria-hidden="true">
+			<span
+				class="game-menu__player-icon"
+				style:--player-ring="var(--{currentPlayer.color})"
+				aria-hidden="true"
+			>
 				<CurrentPlayerIcon size={16} />
 			</span>
 		{/if}
@@ -113,7 +117,12 @@
 	.game-menu__player-icon {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		margin-inline: 0.1em;
+		border: 2px solid var(--player-ring, transparent);
+		border-radius: 50%;
+		width: 1.5em;
+		height: 1.5em;
 		color: var(--orange-800);
 	}
 

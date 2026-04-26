@@ -54,7 +54,7 @@
 				<span class="seat-btn__stack">
 					{#each claimers as claimer}
 						{@const Icon = getPlayerIconComponent(claimer.icon)}
-						<span class="seat-btn__avatar">
+						<span class="seat-btn__avatar" style:--player-ring="var(--{claimer.color})">
 							{#if Icon}<Icon size={13} />{/if}
 						</span>
 					{/each}
@@ -173,7 +173,7 @@
 		height: 1.375rem;
 		border-radius: 50%;
 		background: hsl(0 0% 0% / 0.25);
-		border: 1.5px solid hsl(0 0% 100% / 0.4);
+		border: 2px solid var(--player-ring, hsl(0 0% 100% / 0.4));
 		flex-shrink: 0;
 	}
 

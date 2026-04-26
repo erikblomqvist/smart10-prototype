@@ -1,6 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
-	import { PLAYER_ICONS } from '../lib/playerIcons.js';
+	import { PLAYER_ICONS, PLAYER_COLORS } from '../lib/playerIcons.js';
 	import { supabase } from '../lib/supabase.js';
 	import SetupStepShell from '../components/SetupStepShell.svelte';
 	import SetupPlayersStep from '../components/SetupPlayersStep.svelte';
@@ -12,7 +12,7 @@
 	let { oncomplete, onback } = $props();
 
 	/**
-	 * @typedef {{ name: string, icon: string, seatPosition: number|null, turnOrder: number|null }} SetupPlayer
+	 * @typedef {{ name: string, icon: string, color: string, seatPosition: number|null, turnOrder: number|null }} SetupPlayer
 	 * @typedef {{ players: SetupPlayer[], selectedDeckIds: string[], startingPlayerIndex: number }} GameSetup
 	 */
 
@@ -61,8 +61,10 @@
 	let players = $state(/** @type {SetupPlayer[]} */ ([]));
 	let newName = $state('');
 	let newIcon = $state(PLAYER_ICONS[0].id);
+	let newColor = $state(PLAYER_COLORS[0].id);
 
 	const usedIcons = $derived(players.map((p) => p.icon));
+	const usedColors = $derived(players.map((p) => p.color));
 	const canAddPlayer = $derived(
 		newName.trim().length > 0 &&
 			!players.some(
@@ -76,13 +78,17 @@
 		const name = newName.trim();
 		players = [
 			...players,
-			{ name, icon: newIcon, seatPosition: null, turnOrder: null },
+			{ name, icon: newIcon, color: newColor, seatPosition: null, turnOrder: null },
 		];
 		newName = '';
-		const next = PLAYER_ICONS.find(
+		const nextIcon = PLAYER_ICONS.find(
 			(i) => !players.map((p) => p.icon).includes(i.id),
 		);
-		newIcon = next?.id ?? PLAYER_ICONS[0].id;
+		newIcon = nextIcon?.id ?? PLAYER_ICONS[0].id;
+		const nextColor = PLAYER_COLORS.find(
+			(c) => !players.map((p) => p.color).includes(c.id),
+		);
+		newColor = nextColor?.id ?? PLAYER_COLORS[0].id;
 	}
 
 	function removePlayer(/** @type {string} */ name) {
@@ -92,6 +98,12 @@
 				(i) => !players.map((p) => p.icon).includes(i.id),
 			);
 			if (next) newIcon = next.id;
+		}
+		if (players.map((p) => p.color).includes(newColor)) {
+			const next = PLAYER_COLORS.find(
+				(c) => !players.map((p) => p.color).includes(c.id),
+			);
+			if (next) newColor = next.id;
 		}
 	}
 
@@ -206,7 +218,9 @@
 			{players}
 			bind:newName
 			bind:newIcon
+			bind:newColor
 			{usedIcons}
+			{usedColors}
 			{canAddPlayer}
 			onaddplayer={addPlayer}
 			onremoveplayer={removePlayer}

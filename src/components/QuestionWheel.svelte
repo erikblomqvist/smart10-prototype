@@ -179,7 +179,13 @@
 		width: 1px;
 		height: var(--connector-length);
 		margin-inline-start: -0.5px;
-		background-color: hsl(0 0% 0%);
+		background-color: hsl(0 0% 0% / 0.2);
+		mask: linear-gradient(
+			to bottom,
+			hsl(0 0% 0%) 0 20%,
+			transparent 20% 80%,
+			hsl(0 0% 0%) 80%
+		);
 		rotate: calc(var(--angle-in-turns) + 0.25turn);
 		transform-origin: 50% var(--connector-outer-length);
 	}
@@ -187,8 +193,11 @@
 	.answer-text {
 		position: relative;
 		z-index: 1;
-		background-color: hsl(0 0% 100%);
+		display: inline-block;
+
+		max-width: 10cqmin;
 		padding: 0.5em;
+
 		font-size: clamp(0.875rem, 3cqmin, 1rem);
 	}
 </style>

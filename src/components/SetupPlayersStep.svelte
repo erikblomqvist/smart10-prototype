@@ -3,6 +3,7 @@
 	import { Plus, X } from 'lucide-svelte';
 	import {
 		PLAYER_ICONS,
+		PLAYER_COLORS,
 		getPlayerIconComponent,
 	} from '../lib/playerIcons.js';
 
@@ -11,7 +12,9 @@
 	 *   players: import('../views/SetupView.svelte').SetupPlayer[],
 	 *   newName: string,
 	 *   newIcon: string,
+	 *   newColor: string,
 	 *   usedIcons: string[],
+	 *   usedColors: string[],
 	 *   canAddPlayer: boolean,
 	 *   onaddplayer: () => void,
 	 *   onremoveplayer: (name: string) => void,
@@ -21,7 +24,9 @@
 		players,
 		newName = $bindable(),
 		newIcon = $bindable(),
+		newColor = $bindable(),
 		usedIcons,
+		usedColors,
 		canAddPlayer,
 		onaddplayer,
 		onremoveplayer,
@@ -44,6 +49,24 @@
 		>
 			<IconComp size={20} />
 		</button>
+	{/each}
+</div>
+
+<div class="color-picker" role="group" aria-label="Choose color">
+	{#each PLAYER_COLORS as { id }}
+		<button
+			class="color-option"
+			class:color-option--active={newColor === id}
+			class:color-option--used={usedColors.includes(id)}
+			style:--swatch="var(--{id})"
+			onclick={() => {
+				if (!usedColors.includes(id)) newColor = id;
+			}}
+			type="button"
+			aria-label={id}
+			aria-pressed={newColor === id}
+			disabled={usedColors.includes(id)}
+		></button>
 	{/each}
 </div>
 
@@ -73,7 +96,7 @@
 		{#each players as player}
 			{@const Icon = getPlayerIconComponent(player.icon)}
 			<li class="player-list-item">
-				<span class="player-list-icon" aria-hidden="true">
+				<span class="player-list-icon" style:--player-ring="var(--{player.color})" aria-hidden="true">
 					{#if Icon}
 						<Icon size={18} />
 					{/if}
@@ -95,7 +118,8 @@
 {/if}
 
 <style>
-	.icon-picker {
+	.icon-picker,
+	.color-picker {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
@@ -116,9 +140,11 @@
 			border-color 0.1s;
 	}
 
-	.icon-option:hover:not(:disabled) {
-		background-color: hsl(0 0% 100% / 0.25);
-		border-color: var(--white);
+	.icon-option:not(:disabled) {
+		&:not(.icon-option--active):hover {
+			background-color: hsl(0 0% 100% / 0.25);
+			border-color: var(--white);
+		}
 	}
 
 	.icon-option--active {
@@ -131,6 +157,34 @@
 	}
 
 	.icon-option--used {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
+	.color-option {
+		border: 2px solid hsl(0 0% 100% / 0.3);
+		border-radius: 50%;
+		width: 2.75rem;
+		height: 2.75rem;
+		background: var(--swatch);
+		cursor: pointer;
+		transition:
+			transform 0.1s,
+			border-color 0.1s,
+			box-shadow 0.1s;
+	}
+
+	.color-option:hover:not(:disabled) {
+		border-color: var(--white);
+		transform: scale(1.1);
+	}
+
+	.color-option--active {
+		border-color: var(--white);
+		box-shadow: 0 0 0 2px var(--swatch);
+	}
+
+	.color-option--used {
 		opacity: 0.3;
 		cursor: not-allowed;
 	}
@@ -204,6 +258,10 @@
 		display: grid;
 		place-items: center;
 		flex-shrink: 0;
+		border: 2px solid var(--player-ring, transparent);
+		border-radius: 50%;
+		width: 2rem;
+		height: 2rem;
 	}
 
 	.player-list-name {
