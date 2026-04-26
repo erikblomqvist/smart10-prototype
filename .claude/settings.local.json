@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(item['text']\\) for item in data if item['type']=='text']\")",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "WebSearch",
+      "Bash(xargs ls *)"
+    ]
+  }
+}

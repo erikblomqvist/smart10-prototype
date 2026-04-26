@@ -1,0 +1,67 @@
+{
+  "home": {
+    "new_game": "Nytt spill",
+    "load_game": "Last inn spill",
+    "game_code_placeholder": "Spillkode",
+    "game_code_aria": "5-tegns spillkode",
+    "load": "Last inn",
+    "cancel": "Avbryt"
+  },
+  "setup": {
+    "players_title": "Spillere",
+    "back": "Tilbake",
+    "player_name_placeholder": "Spillernavn",
+    "add_player_aria": "Legg til spiller",
+    "min_players_hint": "Legg til minst 2 spillere for å fortsette.",
+    "continue": "Fortsett",
+    "back_to_players_aria": "Tilbake til spillere",
+    "seated_prompt": "Hvor sitter du?",
+    "seat_aria": "Plass {n}",
+    "choose_decks_title": "Velg kortstokker",
+    "loading_decks": "Laster kortstokker…",
+    "no_decks": "Ingen kortstokker tilgjengelig ennå.",
+    "who_goes_first_title": "Hvem starter?",
+    "randomize": "Tilfeldig",
+    "start_game": "Start spill"
+  },
+  "game": {
+    "save_alert": "Spillkode: {code}\n\nSpillet ditt lagres automatisk etter hvert trekk.",
+    "new_game_confirm": "Starte et nytt spill? Husk å lagre hvis du vil fortsette senere.",
+    "end_round": "Avslutt runde",
+    "pass": "Pass",
+    "round_heading": "Runde {n}",
+    "next_round": "Neste runde",
+    "game_over": "Spillet er over",
+    "wins": "{name} vinner",
+    "pts": "{n} poeng",
+    "new_game": "Nytt spill"
+  },
+  "menu": {
+    "turn": "{name}s tur",
+    "current_round": "Nåværende runde",
+    "overall_score": "Totalpoeng",
+    "general_actions": "Generelle handlinger",
+    "save_game": "Lagre spill",
+    "start_new_game": "Start nytt spill",
+    "admin": "Admin"
+  },
+  "blob": {
+    "answer_aria": "Svar: {answer}",
+    "reveal_aria": "Avslør svar {n}"
+  },
+  "score": {
+    "playing": "Spiller",
+    "passed": "Passer",
+    "out": "Ute"
+  },
+  "answer_dialog": {
+    "yes": "Ja",
+    "no": "Nei",
+    "correct": "Riktig",
+    "wrong": "Feil"
+  },
+  "app": {
+    "loading_aria": "Laster",
+    "load_error": "Kunne ikke laste spillet."
+  }
+}

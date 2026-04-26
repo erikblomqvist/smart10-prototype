@@ -1,0 +1,67 @@
+{
+  "home": {
+    "new_game": "Nytt spel",
+    "load_game": "Ladda spel",
+    "game_code_placeholder": "Spelkod",
+    "game_code_aria": "5-teckens spelkod",
+    "load": "Ladda",
+    "cancel": "Avbryt"
+  },
+  "setup": {
+    "players_title": "Spelare",
+    "back": "Tillbaka",
+    "player_name_placeholder": "Spelarnamn",
+    "add_player_aria": "Lägg till spelare",
+    "min_players_hint": "Lägg till minst 2 spelare för att fortsätta.",
+    "continue": "Fortsätt",
+    "back_to_players_aria": "Tillbaka till spelare",
+    "seated_prompt": "Var sitter du?",
+    "seat_aria": "Plats {n}",
+    "choose_decks_title": "Välj kortlekar",
+    "loading_decks": "Laddar kortlekar…",
+    "no_decks": "Inga kortlekar tillgängliga ännu.",
+    "who_goes_first_title": "Vem börjar?",
+    "randomize": "Slumpa",
+    "start_game": "Starta spel"
+  },
+  "game": {
+    "save_alert": "Spelkod: {code}\n\nDitt spel sparas automatiskt efter varje drag.",
+    "new_game_confirm": "Starta ett nytt spel? Se till att spara om du vill fortsätta senare.",
+    "end_round": "Avsluta runda",
+    "pass": "Passa",
+    "round_heading": "Runda {n}",
+    "next_round": "Nästa runda",
+    "game_over": "Spelet slut",
+    "wins": "{name} vinner",
+    "pts": "{n} poäng",
+    "new_game": "Nytt spel"
+  },
+  "menu": {
+    "turn": "{name}s tur",
+    "current_round": "Aktuell runda",
+    "overall_score": "Totalpoäng",
+    "general_actions": "Allmänna åtgärder",
+    "save_game": "Spara spel",
+    "start_new_game": "Starta nytt spel",
+    "admin": "Admin"
+  },
+  "blob": {
+    "answer_aria": "Svar: {answer}",
+    "reveal_aria": "Avslöja svar {n}"
+  },
+  "score": {
+    "playing": "Spelar",
+    "passed": "Passar",
+    "out": "Ute"
+  },
+  "answer_dialog": {
+    "yes": "Ja",
+    "no": "Nej",
+    "correct": "Rätt",
+    "wrong": "Fel"
+  },
+  "app": {
+    "loading_aria": "Laddar",
+    "load_error": "Kunde inte ladda spelet."
+  }
+}
