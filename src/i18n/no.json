@@ -25,7 +25,7 @@
     "start_game": "Start spill"
   },
   "game": {
-    "save_alert": "Spillkode: {code}\n\nSpillet ditt lagres automatisk etter hvert trekk.",
+    "save_alert": "Spillkode: {code} (kopiert til utklippstavlen)\n\nSpillet ditt lagres automatisk etter hvert trekk.",
     "new_game_confirm": "Starte et nytt spill? Husk å lagre hvis du vil fortsette senere.",
     "end_round": "Avslutt runde",
     "pass": "Pass",

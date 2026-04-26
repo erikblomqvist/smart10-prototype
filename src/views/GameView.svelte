@@ -88,6 +88,7 @@
 	}
 
 	function handleSave() {
+		navigator.clipboard?.writeText(game.code).catch(() => {});
 		alert($_('game.save_alert', { values: { code: game.code } }));
 	}
 

@@ -25,7 +25,7 @@
     "start_game": "Start game"
   },
   "game": {
-    "save_alert": "Game code: {code}\n\nYour game is saved automatically after each move.",
+    "save_alert": "Game code: {code} (copied to clipboard)\n\nYour game is saved automatically after each move.",
     "new_game_confirm": "Start a new game? Make sure to save first if you want to continue later.",
     "end_round": "End round",
     "pass": "Pass",

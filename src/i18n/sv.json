@@ -25,7 +25,7 @@
     "start_game": "Starta spel"
   },
   "game": {
-    "save_alert": "Spelkod: {code}\n\nDitt spel sparas automatiskt efter varje drag.",
+    "save_alert": "Spelkod: {code} (kopierad till urklipp)\n\nDitt spel sparas automatiskt efter varje drag.",
     "new_game_confirm": "Starta ett nytt spel? Se till att spara om du vill fortsätta senare.",
     "end_round": "Avsluta runda",
     "pass": "Passa",
