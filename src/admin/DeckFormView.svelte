@@ -1,6 +1,7 @@
 <script>
+	import LucideIcon from '../components/LucideIcon.svelte';
 	import { supabase } from '../lib/supabase.js';
-	import { DECK_ICONS, getDeckIconComponent } from '../lib/deckIcons.js';
+	import { DECK_ICONS } from '../lib/deckIcons.js';
 	import { validateImageFile, uploadDeckImage, deleteDeckImage } from '../lib/storage.js';
 
 	/** @type {{ id: string|null, navigate: (path: string) => void }} */
@@ -11,22 +12,30 @@
 	let name = $state('');
 	let description = $state('');
 	let icon = $state(/** @type {string|null} */ (null));
+	let iconQuery = $state('');
 	let currentImageUrl = $state(/** @type {string|null} */ (null));
 	/** @type {File|null} */
 	let imageFile = $state(null);
 	let imagePreview = $state(/** @type {string|null} */ (null));
-	let loading = $state(isEdit);
+	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state('');
 
 	/** @type {HTMLInputElement|null} */
 	let fileInput = $state(null);
 
+	const filteredDeckIcons = $derived.by(() => {
+		const tokens = iconQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+		if (tokens.length === 0) return DECK_ICONS;
+		return DECK_ICONS.filter((item) => tokens.every((token) => item.searchText.includes(token)));
+	});
+
 	$effect(() => {
 		if (isEdit && id) loadDeck(id);
 	});
 
 	async function loadDeck(/** @type {string} */ deckId) {
+		loading = true;
 		const { data, error: err } = await supabase.from('decks').select('*').eq('id', deckId).single();
 		if (err) { error = 'Failed to load deck.'; loading = false; return; }
 		name = data.name;
@@ -124,19 +133,37 @@
 			<!-- Icon picker -->
 			<div class="admin-label">
 				Icon
+				<div class="admin-icon-picker-toolbar">
+					<input
+						class="admin-input admin-icon-search"
+						type="search"
+						bind:value={iconQuery}
+						placeholder="Search all Lucide icons"
+						disabled={saving}
+					/>
+					{#if icon}
+						<button class="admin-btn admin-btn--sm" type="button" onclick={() => (icon = null)} disabled={saving}>
+							Clear
+						</button>
+					{/if}
+				</div>
 				<div class="admin-icon-picker">
-					{#each DECK_ICONS as item}
-						{@const Comp = item.component}
+					{#each filteredDeckIcons as item}
 						<button
 							type="button"
 							class="admin-icon-btn"
 							class:admin-icon-btn--active={icon === item.id}
 							onclick={() => (icon = icon === item.id ? null : item.id)}
-							title={item.id}
+							title={item.label}
+							aria-pressed={icon === item.id}
+							disabled={saving}
 						>
-							<Comp size={20} />
+							<LucideIcon name={item.id} iconNode={item.iconNode} size={20} aria-hidden="true" />
 						</button>
 					{/each}
+					{#if filteredDeckIcons.length === 0}
+						<p class="admin-icon-picker__empty">No icons match "{iconQuery}".</p>
+					{/if}
 				</div>
 			</div>
 

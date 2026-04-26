@@ -1,70 +1,53 @@
-import {
-	Layers,
-	BookOpen,
-	Music,
-	Headphones,
-	Mic,
-	Film,
-	Tv,
-	Globe,
-	Map,
-	FlaskConical,
-	Atom,
-	Landmark,
-	Utensils,
-	Coffee,
-	Palette,
-	Trophy,
-	Dumbbell,
-	Car,
-	Plane,
-	Ship,
-	Cpu,
-	Leaf,
-	Heart,
-	Star,
-	Gamepad2,
-	Calculator,
-	Camera,
-	Dog,
-	Rocket,
-	Flag,
-} from 'lucide-svelte';
+import iconNodes from 'lucide-static/icon-nodes.json';
+import iconTags from 'lucide-static/tags.json';
 
-export const DECK_ICONS = [
-	{ id: 'Layers', component: Layers },
-	{ id: 'BookOpen', component: BookOpen },
-	{ id: 'Music', component: Music },
-	{ id: 'Headphones', component: Headphones },
-	{ id: 'Mic', component: Mic },
-	{ id: 'Film', component: Film },
-	{ id: 'Tv', component: Tv },
-	{ id: 'Globe', component: Globe },
-	{ id: 'Map', component: Map },
-	{ id: 'FlaskConical', component: FlaskConical },
-	{ id: 'Atom', component: Atom },
-	{ id: 'Landmark', component: Landmark },
-	{ id: 'Utensils', component: Utensils },
-	{ id: 'Coffee', component: Coffee },
-	{ id: 'Palette', component: Palette },
-	{ id: 'Trophy', component: Trophy },
-	{ id: 'Dumbbell', component: Dumbbell },
-	{ id: 'Car', component: Car },
-	{ id: 'Plane', component: Plane },
-	{ id: 'Ship', component: Ship },
-	{ id: 'Cpu', component: Cpu },
-	{ id: 'Leaf', component: Leaf },
-	{ id: 'Heart', component: Heart },
-	{ id: 'Star', component: Star },
-	{ id: 'Gamepad2', component: Gamepad2 },
-	{ id: 'Calculator', component: Calculator },
-	{ id: 'Camera', component: Camera },
-	{ id: 'Dog', component: Dog },
-	{ id: 'Rocket', component: Rocket },
-	{ id: 'Flag', component: Flag },
-];
+const FALLBACK_ICON_KEY = 'layers';
+
+/** @param {string} value */
+function titleCase(value) {
+	return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/** @param {string} key */
+function kebabToPascal(key) {
+	return key.split('-').map(titleCase).join('');
+}
+
+/** @param {string} id */
+function pascalToKebab(id) {
+	return id
+		.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+		.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+		.toLowerCase();
+}
 
 /** @param {string|null|undefined} id */
-export function getDeckIconComponent(id) {
-	return DECK_ICONS.find((i) => i.id === id)?.component ?? Layers;
+function toIconKey(id) {
+	if (!id) return FALLBACK_ICON_KEY;
+	return id.includes('-') ? id.toLowerCase() : pascalToKebab(id);
+}
+
+/** @param {string} key */
+function getLabel(key) {
+	return key.split('-').map(titleCase).join(' ');
+}
+
+export const DECK_ICONS = Object.entries(iconNodes)
+	.map(([key, iconNode]) => {
+		const id = kebabToPascal(key);
+		const label = getLabel(key);
+		const tags = iconTags[key] ?? [];
+
+		return {
+			id,
+			label,
+			iconNode,
+			searchText: [id, label, key, ...tags].join(' ').toLowerCase(),
+		};
+	})
+	.sort((a, b) => a.label.localeCompare(b.label));
+
+/** @param {string|null|undefined} id */
+export function getDeckIconNode(id) {
+	return iconNodes[toIconKey(id)] ?? iconNodes[FALLBACK_ICON_KEY];
 }

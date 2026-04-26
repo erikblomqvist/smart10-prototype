@@ -1,6 +1,7 @@
 <script>
+	import LucideIcon from '../components/LucideIcon.svelte';
 	import { supabase } from '../lib/supabase.js';
-	import { getDeckIconComponent } from '../lib/deckIcons.js';
+	import { getDeckIconNode } from '../lib/deckIcons.js';
 
 	/** @type {{ navigate: (path: string) => void }} */
 	let { navigate } = $props();
@@ -50,9 +51,11 @@
 	{:else}
 		<ul class="admin-list">
 			{#each decks as deck}
-				{@const Icon = getDeckIconComponent(deck.icon)}
+				{@const iconNode = getDeckIconNode(deck.icon)}
 				<li class="admin-list__item">
-					<span class="admin-list__icon"><Icon size={18} /></span>
+					<span class="admin-list__icon">
+						<LucideIcon name={deck.icon ?? 'Layers'} iconNode={iconNode} size={18} aria-hidden="true" />
+					</span>
 					<span class="admin-list__name">{deck.name}</span>
 					{#if deck.description}
 						<span class="admin-list__meta">{deck.description}</span>
