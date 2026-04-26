@@ -49,6 +49,19 @@
     "answer_aria": "Svar: {answer}",
     "reveal_aria": "Avslør svar {n}"
   },
+  "question_meta": {
+    "type": "Type",
+    "deck": "Kortstokk"
+  },
+  "question_types": {
+    "boolean": "Ja / Nei",
+    "standard": "Standard",
+    "rank": "1 – 10",
+    "chooseBetween": "Velg mellom",
+    "colors": "Farger",
+    "numbers": "Tall",
+    "centuryDecade": "Århundre / tiår"
+  },
   "score": {
     "playing": "Spiller",
     "passed": "Passer",

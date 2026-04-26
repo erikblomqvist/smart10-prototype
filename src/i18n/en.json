@@ -49,6 +49,19 @@
     "answer_aria": "Answer: {answer}",
     "reveal_aria": "Reveal answer {n}"
   },
+  "question_meta": {
+    "type": "Type",
+    "deck": "Deck"
+  },
+  "question_types": {
+    "boolean": "Yes / No",
+    "standard": "Standard",
+    "rank": "1 – 10",
+    "chooseBetween": "Choose between",
+    "colors": "Colors",
+    "numbers": "Numbers",
+    "centuryDecade": "Century / Decade"
+  },
   "score": {
     "playing": "Playing",
     "passed": "Passed",

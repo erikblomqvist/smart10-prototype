@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { CircleDot } from 'lucide-svelte';
 	import { QUESTION_TYPES } from '../data/questionTypes.js';
 	import LucideIcon from './LucideIcon.svelte';
@@ -24,13 +25,13 @@
 </script>
 
 <dl class="question-meta">
-	<dt><span class="question-meta__title">Type:</span></dt>
+	<dt><span class="question-meta__title">{$_('question_meta.type')}:</span></dt>
 	<dd class="question-meta-type">
 		<typeConfig.icon />
-		<span class="question-meta__value">{typeConfig.label}</span>
+		<span class="question-meta__value">{$_(`question_types.${questionType}`)}</span>
 	</dd>
 
-	<dt><span class="question-meta__title">Deck:</span></dt>
+	<dt><span class="question-meta__title">{$_('question_meta.deck')}:</span></dt>
 	<dd>
 		{#if deckIconNode}
 			<LucideIcon name={deckIcon} iconNode={deckIconNode} />

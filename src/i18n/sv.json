@@ -49,6 +49,19 @@
     "answer_aria": "Svar: {answer}",
     "reveal_aria": "Avslöja svar {n}"
   },
+  "question_meta": {
+    "type": "Typ",
+    "deck": "Kortlek"
+  },
+  "question_types": {
+    "boolean": "Ja / Nej",
+    "standard": "Standard",
+    "rank": "1 – 10",
+    "chooseBetween": "Välj mellan",
+    "colors": "Färger",
+    "numbers": "Tal",
+    "centuryDecade": "Århundrade / årtionde"
+  },
   "score": {
     "playing": "Spelar",
     "passed": "Passar",
