@@ -1585,6 +1585,8 @@ main.main--finished {
    ------------------------- */
 
 .seating-screen {
+	--seat-btn-spacing: 3rem;
+	
 	position: fixed;
 	inset: 0;
 	background: linear-gradient(to bottom, var(--orange-500), var(--orange-600));
@@ -1696,8 +1698,9 @@ main.main--finished {
 }
 
 /* Position: 0=top, 1=top-right, 2=right, 3=bottom-right, 4=bottom, 5=bottom-left, 6=left, 7=top-left */
+
 .seat-btn--0 {
-	top: max(1rem, env(safe-area-inset-top));
+	top: max(var(--seat-btn-spacing), env(safe-area-inset-top));
 	left: 50%;
 	transform: translateX(-50%);
 }
@@ -1705,23 +1708,23 @@ main.main--finished {
 	transform: translateX(-50%) scale(1.1);
 }
 .seat-btn--1 {
-	top: max(1rem, env(safe-area-inset-top));
-	right: max(1rem, env(safe-area-inset-right));
+	top: max(var(--seat-btn-spacing), env(safe-area-inset-top));
+	right: max(var(--seat-btn-spacing), env(safe-area-inset-right));
 }
 .seat-btn--2 {
 	top: 50%;
-	right: max(1rem, env(safe-area-inset-right));
+	right: max(var(--seat-btn-spacing), env(safe-area-inset-right));
 	transform: translateY(-50%);
 }
 .seat-btn--2:hover:not(:disabled) {
 	transform: translateY(-50%) scale(1.1);
 }
 .seat-btn--3 {
-	bottom: max(1rem, env(safe-area-inset-bottom));
-	right: max(1rem, env(safe-area-inset-right));
+	bottom: max(var(--seat-btn-spacing), env(safe-area-inset-bottom));
+	right: max(var(--seat-btn-spacing), env(safe-area-inset-right));
 }
 .seat-btn--4 {
-	bottom: max(1rem, env(safe-area-inset-bottom));
+	bottom: max(var(--seat-btn-spacing), env(safe-area-inset-bottom));
 	left: 50%;
 	transform: translateX(-50%);
 }
@@ -1729,20 +1732,20 @@ main.main--finished {
 	transform: translateX(-50%) scale(1.1);
 }
 .seat-btn--5 {
-	bottom: max(1rem, env(safe-area-inset-bottom));
-	left: max(1rem, env(safe-area-inset-left));
+	bottom: max(var(--seat-btn-spacing), env(safe-area-inset-bottom));
+	left: max(var(--seat-btn-spacing), env(safe-area-inset-left));
 }
 .seat-btn--6 {
 	top: 50%;
-	left: max(1rem, env(safe-area-inset-left));
+	left: max(var(--seat-btn-spacing), env(safe-area-inset-left));
 	transform: translateY(-50%);
 }
 .seat-btn--6:hover:not(:disabled) {
 	transform: translateY(-50%) scale(1.1);
 }
 .seat-btn--7 {
-	top: max(1rem, env(safe-area-inset-top));
-	left: max(1rem, env(safe-area-inset-left));
+	top: max(var(--seat-btn-spacing), env(safe-area-inset-top));
+	left: max(var(--seat-btn-spacing), env(safe-area-inset-left));
 }
 
 /* -------------------------
