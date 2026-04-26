@@ -93,7 +93,7 @@
 	.answer-dialog {
 		border: 3px solid var(--orange-700);
 		border-radius: 1rem;
-		max-width: min(26rem, calc(100vw - 2rem));
+		max-width: min(26rem, calc(100vw - 6rem));
 		width: 100%;
 		padding: 1.5rem;
 		background-color: var(--white);

@@ -135,7 +135,7 @@
 		box-sizing: border-box;
 		border: 3px solid var(--orange-700);
 		border-radius: 0.75rem;
-		width: min(22rem, calc(100vw - 2rem));
+		width: min(22rem, calc(100vw - 6rem));
 		max-height: calc(100svh - 6rem);
 		padding: 1rem;
 		overflow: auto;

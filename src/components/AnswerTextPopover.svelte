@@ -24,7 +24,7 @@
 	.answer-text-popover {
 		border: 3px solid var(--orange-700);
 		border-radius: 1rem;
-		max-width: min(28rem, calc(100vw - 2rem));
+		max-width: min(26rem, calc(100vw - 6rem));
 		padding: 1.25rem 1.75rem;
 		background-color: var(--white);
 		color: var(--grayscale-900);
