@@ -25,8 +25,7 @@
 	font-style: normal;
 	font-weight: 200 700;
 	font-display: swap;
-	ascent-override: 70%;
-	descent-override: 1%;
+	ascent-override: 90%;
 	src: url('https://fonts.gstatic.com/s/yanonekaffeesatz/v32/3y976aknfjLm_3lMKjiMgmUUYBs04Y8bH-qHHt6M.woff2')
 		format('woff2');
 }

@@ -144,7 +144,7 @@
 		flex: 1;
 		border: 3px solid var(--orange-700);
 		border-radius: 0.5rem;
-		padding: 0.625rem 0.875rem;
+		padding: 0.425rem 0.875rem;
 		background-color: var(--white);
 		color: var(--grayscale-900);
 		font-family: 'Yanone Kaffeesatz', sans-serif;

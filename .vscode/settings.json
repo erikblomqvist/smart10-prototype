@@ -1,5 +1,8 @@
 {
   "search.exclude": {
     "**/dist": true
-  }
+  },
+  "i18n-ally.localesPaths": [
+    "src/i18n"
+  ]
 }
