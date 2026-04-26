@@ -1,6 +1,7 @@
 <script>
+	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import { Layers } from 'lucide-svelte';
+	import LucideIcon from './LucideIcon.svelte';
 
 	/**
 	 * @type {{
@@ -11,6 +12,14 @@
 	 * }}
 	 */
 	let { decks, decksLoading, selectedDeckIds, ontoggledeck } = $props();
+
+	/** @type {((id: string|null|undefined) => Array<[string, Record<string, string>]>)|null} */
+	let getDeckIconNode = $state(null);
+
+	onMount(async () => {
+		const icons = await import('../lib/deckIcons.js');
+		getDeckIconNode = icons.getDeckIconNode;
+	});
 </script>
 
 {#if decksLoading}
@@ -21,6 +30,7 @@
 	<ul class="deck-list" role="list">
 		{#each decks as deck}
 			{@const isSelected = selectedDeckIds.includes(deck.id)}
+			{@const iconNode = getDeckIconNode?.(deck.icon)}
 			<li>
 				<button
 					class="deck-card"
@@ -31,7 +41,9 @@
 					aria-checked={isSelected}
 				>
 					<span class="deck-card__icon" aria-hidden="true">
-						<Layers size={22} />
+						{#if iconNode}
+							<LucideIcon name={deck.icon ?? 'Layers'} iconNode={iconNode} size={22} />
+						{/if}
 					</span>
 					<span class="deck-card__info">
 						<span class="deck-card__name">{deck.name}</span>
