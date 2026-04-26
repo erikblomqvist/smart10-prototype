@@ -1,0 +1,43 @@
+<script>
+	/**
+	 * @type {{ id: string, text: string }}
+	 */
+	let { id, text } = $props();
+
+	/** @param {MouseEvent & { currentTarget: HTMLElement }} event */
+	function closePopover(event) {
+		event.currentTarget.hidePopover();
+	}
+</script>
+
+<button
+	{id}
+	class="answer-text-popover"
+	type="button"
+	popover="auto"
+	onclick={closePopover}
+>
+	{text}
+</button>
+
+<style>
+	.answer-text-popover {
+		border: 3px solid var(--orange-700);
+		border-radius: 1rem;
+		max-width: min(28rem, calc(100vw - 2rem));
+		padding: 1.25rem 1.75rem;
+		background-color: var(--white);
+		color: var(--grayscale-900);
+		font-family: 'Yanone Kaffeesatz', sans-serif;
+		font-size: clamp(2rem, 8vw, 4rem);
+		font-weight: 700;
+		line-height: 1.05;
+		text-align: center;
+		box-shadow: 0 1rem 2rem hsl(0 0% 0% / 0.25);
+		cursor: pointer;
+	}
+
+	.answer-text-popover::backdrop {
+		background-color: hsl(0 0% 0% / 0.25);
+	}
+</style>

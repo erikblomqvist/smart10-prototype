@@ -1,5 +1,6 @@
 <script>
 	import AnswerBlob from './AnswerBlob.svelte';
+	import AnswerTextPopover from './AnswerTextPopover.svelte';
 
 	/**
 	 * @type {{
@@ -23,6 +24,12 @@
 	} = $props();
 
 	const answerBlobs = $derived(blobs ?? answers.map(() => null));
+	const popoverIdPrefix = Math.random().toString(36).slice(2);
+
+	/** @param {number} index */
+	function getAnswerPopoverId(index) {
+		return `answer-popover-${popoverIdPrefix}-${index}`;
+	}
 </script>
 
 <div class="container" style="--seat-rotation:{seatRotation}">
@@ -45,14 +52,21 @@
 
 	<div class="answers">
 		{#each answers as answer, i}
-			<span
+			<button
 				class="answer"
+				type="button"
+				popovertarget={getAnswerPopoverId(i)}
+				aria-label={`Show full answer: ${answer}`}
 				style="--index:{i + 1};--total:{answers.length}"
 			>
 				<span class="answer-text">{answer}</span>
-			</span>
+			</button>
 		{/each}
 	</div>
+
+	{#each answers as answer, i}
+		<AnswerTextPopover id={getAnswerPopoverId(i)} text={answer} />
+	{/each}
 </div>
 
 <style>
@@ -62,7 +76,7 @@
 		--question-scale: 0.55;
 		--question-size: calc(var(--container-size) * var(--question-scale));
 		--question-radius: calc(var(--question-size) / 2);
-		--question-padding: 2em;
+		--question-padding: calc(var(--question-size) * 0.12);
 		--answer-radius: calc(var(--container-size) / 2.6);
 		--blob-radius: calc(var(--container-size) / 1.6);
 
@@ -134,8 +148,11 @@
 
 	.question p {
 		margin: 0;
-		font-size: clamp(0.875rem, 4.5cqmin, 1.5rem);
-		line-height: 1.2;
+		font-size: clamp(0.875rem, calc(var(--question-size) * 0.13), 1.5rem);
+		line-height: 1.1;
+		text-wrap: balance;
+		overflow-wrap: break-word;
+		hyphens: auto;
 	}
 
 	.blobs,
@@ -152,6 +169,9 @@
 	.answer {
 		--angle-fraction: calc(((var(--index) - 1) / var(--total)) - 0.25);
 		--angle-in-turns: calc(var(--angle-fraction) * 1turn);
+		--answer-slot-width: calc(
+			2 * var(--answer-radius) * sin(calc(0.5turn / var(--total))) * 0.85
+		);
 		--connector-outer-length: calc(
 			var(--container-radius) - var(--answer-radius)
 		);
@@ -160,14 +180,28 @@
 		);
 
 		pointer-events: auto;
+		appearance: none;
 		position: absolute;
 		top: calc(50% + sin(var(--angle-in-turns)) * var(--answer-radius));
 		left: calc(50% + cos(var(--angle-in-turns)) * var(--answer-radius));
-		display: inline-block;
+		display: grid;
+		place-items: center;
 		z-index: 0;
-		width: max-content;
+		border: 0;
+		margin: 0;
+		padding: 0;
+		width: var(--answer-slot-width);
+		background: none;
+		color: inherit;
+		font: inherit;
 		transform: translate(-50%, -50%);
 		text-align: center;
+		cursor: pointer;
+	}
+
+	.answer:focus-visible {
+		outline: 3px solid var(--orange-800);
+		outline-offset: 3px;
 	}
 
 	.answer::before {
@@ -193,11 +227,25 @@
 	.answer-text {
 		position: relative;
 		z-index: 1;
-		display: inline-block;
+		display: -webkit-box;
+		box-sizing: border-box;
+		overflow: hidden;
 
-		max-width: 10cqmin;
-		padding: 0.5em;
+		max-width: 100%;
+		padding-inline: 0.35em;
 
-		font-size: clamp(0.875rem, 3cqmin, 1rem);
+		font-size: clamp(0.75rem, calc(var(--container-size) * 0.035), 1rem);
+		line-height: 1.1;
+		text-wrap: balance;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+	}
+
+	@container body (width >= 40rem) {
+		.answer-text {
+			-webkit-line-clamp: 3;
+			line-clamp: 3;
+		}
 	}
 </style>
