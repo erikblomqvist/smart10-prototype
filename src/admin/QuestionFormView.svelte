@@ -1,4 +1,5 @@
 <script>
+	import { untrack } from 'svelte';
 	import { supabase } from '../lib/supabase.js';
 
 	/** @type {{ id: string|null, navigate: (path: string) => void }} */
@@ -31,7 +32,7 @@
 	let error = $state('');
 
 	// Reset correct answers when type changes (only on user-initiated change)
-	let prevType = type;
+	let prevType = $state(untrack(() => type));
 	$effect(() => {
 		if (type !== prevType) {
 			correctAnswers = initCorrectAnswers(type);
