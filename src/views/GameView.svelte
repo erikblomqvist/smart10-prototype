@@ -7,12 +7,15 @@
 		endRound,
 		startNextRound,
 		checkRoundOver,
+		canUndoLastMove,
+		undoLastMove,
 	} from '../lib/game.svelte.js';
 	import { QUESTION_TYPES } from '../data/questionTypes.js';
 	import GameMenu from '../components/GameMenu.svelte';
 	import QuestionMeta from '../components/QuestionMeta.svelte';
 	import QuestionWheel from '../components/QuestionWheel.svelte';
 	import AnswerDialog from '../components/AnswerDialog.svelte';
+	import UndoLastMoveDialog from '../components/UndoLastMoveDialog.svelte';
 	import RoundReviewPanel from '../components/RoundReviewPanel.svelte';
 	import GameFinishedPodium from '../components/GameFinishedPodium.svelte';
 
@@ -21,6 +24,7 @@
 
 	let dialogOpen = $state(false);
 	let pendingBlobIndex = $state(/** @type {number|null} */ (null));
+	let undoDialogOpen = $state(false);
 
 	const currentPlayer = $derived(
 		game.players.find((p) => p.id === game.currentPlayerId) ?? null,
@@ -51,6 +55,10 @@
 	);
 
 	const roundIsOver = $derived(checkRoundOver());
+	const undoIsAvailable = $derived(canUndoLastMove());
+	const undoableBlobIndex = $derived(
+		undoIsAvailable ? (game.currentRound?.lastAnswerMove?.blobIndex ?? null) : null,
+	);
 
 	function getSeatRotation(/** @type {number} */ seatPosition) {
 		return ((seatPosition + 4) % 8) * 45;
@@ -86,12 +94,22 @@
 		dialogOpen = true;
 	}
 
+	function handleUndoBlobClick(/** @type {number} */ blobIndex) {
+		if (blobIndex !== undoableBlobIndex) return;
+		undoDialogOpen = true;
+	}
+
 	function handleDialogResult(/** @type {boolean} */ isCorrect) {
 		dialogOpen = false;
 		if (pendingBlobIndex !== null) {
 			revealBlob(pendingBlobIndex, isCorrect);
 			pendingBlobIndex = null;
 		}
+	}
+
+	function handleUndoDialogConfirm() {
+		undoDialogOpen = false;
+		undoLastMove();
 	}
 
 	function handlePassOrEnd() {
@@ -125,6 +143,8 @@
 			players={game.players}
 			onstartover={handleStartOver}
 			onsave={handleSave}
+			onundo={undoLastMove}
+			canundo={undoIsAvailable}
 		/>
 
 		{#if question}
@@ -137,7 +157,9 @@
 				correctAnswers={question.correctAnswers}
 				blobs={blobStates}
 				{seatRotation}
+				{undoableBlobIndex}
 				onblobclick={handleBlobClick}
+				onundoblobclick={handleUndoBlobClick}
 			/>
 		{/if}
 
@@ -159,6 +181,13 @@
 			questionType={question?.type ?? 'standard'}
 			onresult={handleDialogResult}
 		/>
+		{#if undoDialogOpen}
+			<UndoLastMoveDialog
+				open={true}
+				onconfirm={handleUndoDialogConfirm}
+				oncancel={() => (undoDialogOpen = false)}
+			/>
+		{/if}
 	</main>
 {:else if game.status === 'round_review'}
 	<main

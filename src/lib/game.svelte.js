@@ -26,12 +26,24 @@
  * }} GameQuestion
  *
  * @typedef {{
+ *   blobIndex: number,
+ *   playerId: string,
+ *   previousRoundScore: number,
+ *   previousStatus: PlayerStatus,
+ *   previousCurrentPlayerId: string|null,
+ *   previousLastPlayerId: string|null,
+ *   answerId: string|null,
+ *   deleteWhenPersisted: boolean,
+ * }} LastAnswerMove
+ *
+ * @typedef {{
  *   roundNumber: number,
  *   question: GameQuestion,
  *   answeredBlobs: number[],
  *   blobResults: Record<number, boolean>,
  *   lastPlayerId: string|null,
  *   dbId: string|null,
+ *   lastAnswerMove: LastAnswerMove|null,
  * }} Round
  */
 
@@ -196,6 +208,13 @@ export function checkRoundOver() {
 	return allAnswered || allInactive;
 }
 
+export function canUndoLastMove() {
+	const round = game.currentRound;
+	if (!round?.lastAnswerMove) return false;
+	const lastAnsweredBlob = round.answeredBlobs.at(-1);
+	return lastAnsweredBlob === round.lastAnswerMove.blobIndex;
+}
+
 // --- Exported mutations ---
 
 /**
@@ -237,6 +256,7 @@ export async function initGame(setup) {
 		blobResults: {},
 		lastPlayerId: null,
 		dbId: null,
+		lastAnswerMove: null,
 	};
 
 	lockPortraitOnPhone();
@@ -332,10 +352,22 @@ export function revealBlob(blobIndex, isCorrect) {
 	if (playerIdx === -1) return;
 
 	const actingPlayerDbId = game.players[playerIdx].dbId;
+	const round = game.currentRound;
+	const lastAnswerMove = {
+		blobIndex,
+		playerId: game.currentPlayerId,
+		previousRoundScore: game.players[playerIdx].roundScore,
+		previousStatus: game.players[playerIdx].status,
+		previousCurrentPlayerId: game.currentPlayerId,
+		previousLastPlayerId: round.lastPlayerId,
+		answerId: /** @type {string|null} */ (null),
+		deleteWhenPersisted: false,
+	};
 
-	game.currentRound.answeredBlobs.push(blobIndex);
-	game.currentRound.blobResults[blobIndex] = isCorrect;
-	game.currentRound.lastPlayerId = game.currentPlayerId;
+	round.lastAnswerMove = lastAnswerMove;
+	round.answeredBlobs.push(blobIndex);
+	round.blobResults[blobIndex] = isCorrect;
+	round.lastPlayerId = game.currentPlayerId;
 
 	if (isCorrect) {
 		game.players[playerIdx].roundScore += 1;
@@ -349,18 +381,51 @@ export function revealBlob(blobIndex, isCorrect) {
 		if (nextId) game.currentPlayerId = nextId;
 	}
 
-	if (supabase && game.currentRound.dbId && actingPlayerDbId) {
+	if (supabase && round.dbId && actingPlayerDbId) {
 		supabase
 			.from('player_answers')
 			.insert({
-				round_id: game.currentRound.dbId,
+				round_id: round.dbId,
 				player_id: actingPlayerDbId,
 				blob_index: blobIndex,
 				is_correct: isCorrect,
 			})
-			.then(() => syncGameState())
+			.select('id')
+			.single()
+			.then(async ({ data }) => {
+				lastAnswerMove.answerId = data?.id ?? null;
+				if (lastAnswerMove.deleteWhenPersisted && lastAnswerMove.answerId) {
+					await deletePersistedAnswer(lastAnswerMove);
+				}
+				await syncGameState();
+			})
 			.catch(console.error);
 	}
+}
+
+export function undoLastMove() {
+	const round = game.currentRound;
+	const move = round?.lastAnswerMove;
+	if (!round || !move || !canUndoLastMove()) return;
+
+	const playerIdx = game.players.findIndex((p) => p.id === move.playerId);
+	if (playerIdx === -1) return;
+
+	round.answeredBlobs.pop();
+	delete round.blobResults[move.blobIndex];
+	round.lastPlayerId = move.previousLastPlayerId;
+	round.lastAnswerMove = null;
+
+	game.players[playerIdx].roundScore = move.previousRoundScore;
+	game.players[playerIdx].status = move.previousStatus;
+	game.currentPlayerId = move.previousCurrentPlayerId;
+
+	if (move.answerId) {
+		deletePersistedAnswer(move).catch(console.error);
+	} else {
+		move.deleteWhenPersisted = true;
+	}
+	syncGameState().catch(console.error);
 }
 
 export function passCurrentPlayer() {
@@ -369,6 +434,7 @@ export function passCurrentPlayer() {
 
 	game.players[playerIdx].status = 'passed';
 	if (game.currentRound) game.currentRound.lastPlayerId = game.currentPlayerId;
+	if (game.currentRound) game.currentRound.lastAnswerMove = null;
 
 	if (!checkRoundOver()) {
 		const nextId = getNextActivePlayerId(game.players, game.currentPlayerId);
@@ -379,6 +445,8 @@ export function passCurrentPlayer() {
 }
 
 export function endRound() {
+	if (game.currentRound) game.currentRound.lastAnswerMove = null;
+
 	game.players.forEach((_, idx) => {
 		game.players[idx].totalScore += game.players[idx].roundScore;
 	});
@@ -407,6 +475,7 @@ export function startNextRound() {
 		blobResults: {},
 		lastPlayerId: null,
 		dbId: null,
+		lastAnswerMove: null,
 	};
 
 	game.status = 'playing';
@@ -442,6 +511,12 @@ async function dbCreateNewRound() {
 	}
 
 	await syncGameState();
+}
+
+/** @param {LastAnswerMove} move */
+async function deletePersistedAnswer(move) {
+	if (!supabase || !move.answerId) return;
+	await supabase.from('player_answers').delete().eq('id', move.answerId);
 }
 
 /**
@@ -532,6 +607,7 @@ export async function loadGame(code) {
 				blobResults,
 				lastPlayerId: roundRow.last_player_id,
 				dbId: roundRow.id,
+				lastAnswerMove: null,
 			}
 		: null;
 

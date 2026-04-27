@@ -1,5 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
+	import { syncDialogOpen } from '../../utilities/dialog.js';
 
 	/**
 	 * @type {{
@@ -16,9 +17,7 @@
 	let dialogEl = $state(null);
 
 	$effect(() => {
-		if (!dialogEl) return;
-		if (open && !dialogEl.open) dialogEl.showModal();
-		else if (!open && dialogEl.open) dialogEl.close();
+		syncDialogOpen(dialogEl, open);
 	});
 
 	const isBoolean = $derived(typeof correctAnswer === 'boolean');

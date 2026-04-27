@@ -10,6 +10,7 @@
 	 *   index: number,
 	 *   total: number,
 	 *   onreveal?: () => void,
+ *   onansweredclick?: () => void,
 	 * }}
 	 */
 	let {
@@ -19,6 +20,7 @@
 		index,
 		total,
 		onreveal,
+		onansweredclick,
 	} = $props();
 
 	const isAnswered = $derived(answered !== null);
@@ -64,10 +66,13 @@
 		? `;--answer-background-color:${answerBackgroundColor}`
 		: ''}"
 	aria-label={isAnswered
-		? $_('blob.answer_aria', { values: { answer: answerLabel } })
+		? onansweredclick
+			? $_('blob.undo_aria', { values: { answer: answerLabel } })
+			: $_('blob.answer_aria', { values: { answer: answerLabel } })
 		: $_('blob.reveal_aria', { values: { n: index } })}
 	onclick={() => {
 		if (answered === null) onreveal?.();
+		else onansweredclick?.();
 	}}
 >
 	{#if isAnswered}

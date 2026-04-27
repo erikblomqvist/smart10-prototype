@@ -41,12 +41,14 @@
     "current_round": "Current round",
     "overall_score": "Overall score",
     "general_actions": "General actions",
+    "undo_last_move": "Undo last move",
     "save_game": "Save game",
     "start_new_game": "Start new game",
     "admin": "Admin"
   },
   "blob": {
     "answer_aria": "Answer: {answer}",
+    "undo_aria": "Undo last move for answer: {answer}",
     "reveal_aria": "Reveal answer {n}"
   },
   "question_meta": {
@@ -72,6 +74,11 @@
     "no": "No",
     "correct": "Correct",
     "wrong": "Wrong"
+  },
+  "undo_dialog": {
+    "prompt": "Undo last move?",
+    "yes": "Yes",
+    "no": "No"
   },
   "app": {
     "loading_aria": "Loading",

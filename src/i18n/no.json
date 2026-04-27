@@ -41,12 +41,14 @@
     "current_round": "Nåværende runde",
     "overall_score": "Totalpoeng",
     "general_actions": "Generelle handlinger",
+    "undo_last_move": "Angre siste trekk",
     "save_game": "Lagre spill",
     "start_new_game": "Start nytt spill",
     "admin": "Admin"
   },
   "blob": {
     "answer_aria": "Svar: {answer}",
+    "undo_aria": "Angre siste trekk for svar: {answer}",
     "reveal_aria": "Avslør svar {n}"
   },
   "question_meta": {
@@ -72,6 +74,11 @@
     "no": "Nei",
     "correct": "Riktig",
     "wrong": "Feil"
+  },
+  "undo_dialog": {
+    "prompt": "Angre siste trekk?",
+    "yes": "Ja",
+    "no": "Nei"
   },
   "app": {
     "loading_aria": "Laster",

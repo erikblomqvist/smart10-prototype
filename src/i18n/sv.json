@@ -41,12 +41,14 @@
     "current_round": "Aktuell runda",
     "overall_score": "Totalpoäng",
     "general_actions": "Allmänna åtgärder",
+    "undo_last_move": "Ångra senaste draget",
     "save_game": "Spara spel",
     "start_new_game": "Starta nytt spel",
     "admin": "Admin"
   },
   "blob": {
     "answer_aria": "Svar: {answer}",
+    "undo_aria": "Ångra senaste draget för svar: {answer}",
     "reveal_aria": "Avslöja svar {n}"
   },
   "question_meta": {
@@ -72,6 +74,11 @@
     "no": "Nej",
     "correct": "Rätt",
     "wrong": "Fel"
+  },
+  "undo_dialog": {
+    "prompt": "Ångra senaste draget?",
+    "yes": "Ja",
+    "no": "Nej"
   },
   "app": {
     "loading_aria": "Laddar",

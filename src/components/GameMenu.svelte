@@ -1,6 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
-	import { Menu, X, RotateCcw, Shield, Save } from 'lucide-svelte';
+	import { Menu, X, RotateCcw, Shield, Save, Undo2 } from 'lucide-svelte';
 	import { getPlayerIconComponent } from '../lib/playerIcons.js';
 	import OverallScoreList from './OverallScoreList.svelte';
 	import ScoreList from './ScoreList.svelte';
@@ -11,9 +11,12 @@
 	 *   players: import('../lib/game.svelte.js').GamePlayer[],
 	 *   onstartover: () => void,
 	 *   onsave: () => void,
+ *   onundo: () => void,
+ *   canundo: boolean,
 	 * }}
 	 */
-	let { currentPlayer, players, onstartover, onsave } = $props();
+	let { currentPlayer, players, onstartover, onsave, onundo, canundo } =
+		$props();
 
 	let open = $state(false);
 
@@ -58,6 +61,12 @@
 
 		<section class="game-menu__section game-menu__section--actions">
 			<h2 class="game-menu__heading">{$_('menu.general_actions')}</h2>
+			{#if canundo}
+				<button class="game-menu__action" type="button" onclick={onundo}>
+					<Undo2 />
+					<span>{$_('menu.undo_last_move')}</span>
+				</button>
+			{/if}
 			<button class="game-menu__action" type="button" onclick={onsave}>
 				<Save />
 				<span>{$_('menu.save_game')}</span>
@@ -130,6 +139,7 @@
 		position: absolute;
 		top: calc(100% + 0.75rem);
 		left: 0;
+		z-index: 1;
 		display: grid;
 		gap: 1rem;
 		box-sizing: border-box;

@@ -10,7 +10,9 @@
 	 *   correctAnswers: (boolean|string|number|{ text: string, backgroundColor: string })[],
 	 *   blobs?: (boolean|null)[],
 	 *   seatRotation?: number,
+ *   undoableBlobIndex?: number|null,
 	 *   onblobclick?: (index: number) => void,
+ *   onundoblobclick?: (index: number) => void,
 	 * }}
 	 */
 	let {
@@ -20,7 +22,9 @@
 		correctAnswers,
 		blobs,
 		seatRotation = 0,
+		undoableBlobIndex = null,
 		onblobclick,
+		onundoblobclick,
 	} = $props();
 
 	const answerBlobs = $derived(blobs ?? answers.map(() => null));
@@ -46,6 +50,9 @@
 				index={i + 1}
 				total={answerBlobs.length}
 				onreveal={blob === null ? () => onblobclick?.(i) : undefined}
+				onansweredclick={blob !== null && undoableBlobIndex === i
+					? () => onundoblobclick?.(i)
+					: undefined}
 			/>
 		{/each}
 	</div>
