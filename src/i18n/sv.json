@@ -5,7 +5,24 @@
     "game_code_placeholder": "Spelkod",
     "game_code_aria": "5-teckens spelkod",
     "load": "Ladda",
-    "cancel": "Avbryt"
+    "cancel": "Avbryt",
+    "list_previous_games": "Lista tidigare spel"
+  },
+  "previous_games": {
+    "title": "Tidigare spel",
+    "loading": "Laddar tidigare spel…",
+    "empty": "Inga oavslutade spel hittades.",
+    "started": "Startat",
+    "decks": "Kortlekar",
+    "participants": "Deltagare",
+    "last_move": "Senaste drag",
+    "no_decks": "Inga kortlekar",
+    "no_participants": "Inga deltagare",
+    "previous": "Föregående",
+    "next": "Nästa",
+    "page_empty": "Inga spel",
+    "page_range": "{start}–{end} av {total}",
+    "load_game_aria": "Ladda spel {code}"
   },
   "setup": {
     "players_title": "Spelare",

@@ -3,15 +3,16 @@
 	import HomeView from './components/HomeView.svelte';
 	import SetupView from './views/SetupView.svelte';
 	import GameView from './views/GameView.svelte';
+	import PreviousGamesView from './views/PreviousGamesView.svelte';
 	import { initGame, loadGame } from './lib/game.svelte.js';
 
-	/** @type {'landing'|'setup'|'game'} */
+	/** @type {'landing'|'setup'|'game'|'previousGames'} */
 	let view = $state('landing');
 	let loading = $state(false);
 	/** @type {string|null} */
 	let loadError = $state(null);
 
-	function navigate(/** @type {'landing'|'setup'|'game'} */ newView) {
+	function navigate(/** @type {'landing'|'setup'|'game'|'previousGames'} */ newView) {
 		if (document.startViewTransition) {
 			document.startViewTransition(() => {
 				view = newView;
@@ -55,12 +56,21 @@
 		<HomeView
 			onnewgame={() => navigate('setup')}
 			onloadgame={handleLoadGame}
+			onpreviousgames={() => navigate('previousGames')}
 			loaderror={loadError}
 		/>
 	</main>
 {:else if view === 'setup'}
 	<main class="main--setup">
 		<SetupView oncomplete={handleSetupComplete} onback={() => navigate('landing')} />
+	</main>
+{:else if view === 'previousGames'}
+	<main class="main--previous-games">
+		<PreviousGamesView
+			onback={() => navigate('landing')}
+			onloadgame={handleLoadGame}
+			loaderror={loadError}
+		/>
 	</main>
 {:else if view === 'game'}
 	<GameView onstartover={() => navigate('landing')} />

@@ -5,7 +5,24 @@
     "game_code_placeholder": "Game code",
     "game_code_aria": "5-character game code",
     "load": "Load",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "list_previous_games": "List previous games"
+  },
+  "previous_games": {
+    "title": "Previous games",
+    "loading": "Loading previous games…",
+    "empty": "No unfinished games found.",
+    "started": "Started",
+    "decks": "Decks",
+    "participants": "Participants",
+    "last_move": "Last move",
+    "no_decks": "No decks",
+    "no_participants": "No participants",
+    "previous": "Previous",
+    "next": "Next",
+    "page_empty": "No games",
+    "page_range": "{start}–{end} of {total}",
+    "load_game_aria": "Load game {code}"
   },
   "setup": {
     "players_title": "Players",
