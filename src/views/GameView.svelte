@@ -587,6 +587,9 @@
 			blobLabel={pendingBlobLabel}
 			correctAnswer={pendingBlobAnswer}
 			questionType={question?.type ?? 'standard'}
+			seatRotation={interactiveWheelSeatRotation}
+			rotationDurationMs={wheelRotationDurationMs}
+			rotationEasing={wheelRotationEasing}
 			onresult={handleDialogResult}
 		/>
 		{#if undoDialogOpen}

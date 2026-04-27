@@ -8,10 +8,22 @@
 	 *   blobLabel: string,
 	 *   correctAnswer: import('../data/game.js').CorrectAnswer | null,
 	 *   questionType: import('../data/questionTypes.js').QuestionType,
+	 *   seatRotation?: number,
+	 *   rotationDurationMs?: number,
+	 *   rotationEasing?: string,
 	 *   onresult: (isCorrect: boolean) => void,
 	 * }}
 	 */
-	let { open, blobLabel, correctAnswer, questionType, onresult } = $props();
+	let {
+		open,
+		blobLabel,
+		correctAnswer,
+		questionType,
+		seatRotation = 0,
+		rotationDurationMs = 500,
+		rotationEasing = 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+		onresult,
+	} = $props();
 
 	/** @type {HTMLDialogElement | null} */
 	let dialogEl = $state(null);
@@ -40,7 +52,7 @@
 	class="answer-dialog"
 	class:answer-dialog--boolean={isBoolean}
 	class:answer-dialog--color={isColor}
-	style={colorStyle}
+	style={`${colorStyle};--seat-rotation:${seatRotation};--rotation-duration-ms:${rotationDurationMs};--rotation-easing:${rotationEasing}`}
 	onkeydown={(e) => e.key === 'Escape' && e.preventDefault()}
 	onclick={(e) => e.stopPropagation()}
 >
@@ -99,6 +111,9 @@
 		color: var(--grayscale-900);
 		box-shadow: 0 1rem 3rem hsl(0 0% 0% / 0.35);
 		text-align: center;
+		transform: rotate(calc(var(--seat-rotation, 0) * 1deg));
+		transition: transform calc(var(--rotation-duration-ms, 500) * 1ms)
+			var(--rotation-easing, cubic-bezier(0.34, 1.56, 0.64, 1));
 	}
 
 	.answer-dialog--color {
