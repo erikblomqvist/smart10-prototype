@@ -87,12 +87,30 @@
 	const INTRO_READING_MS_PER_CHARACTER = 25;
 	const INTRO_READING_MIN_MS = 1800;
 	const INTRO_READING_MAX_MS = 4000;
+	const SPRING_DRAG_MAX_ROTATION = 120;
+	const SPRING_DRAG_ROTATION_PER_PX = 0.18;
+	const SPRING_DRAG_RETURN_DURATION_MS = 500;
+	const SPRING_DRAG_IGNORE_SELECTOR =
+		'button, a, input, select, textarea, [role="button"], [popover], [data-game-scroll-lock-allow]';
 	let introSeatRotation = $state(/** @type {number|null} */ (null));
 	let playedIntroRoundKey = /** @type {string | null} */ (null);
 	let introTimerIds = /** @type {ReturnType<typeof setTimeout>[]} */ ([]);
+	let springDragPointerId = $state(/** @type {number|null} */ (null));
+	let springDragStartY = 0;
+	let springDragRotationOffset = $state(0);
+	let springDragIsActive = $state(false);
 	const wheelSeatRotation = $derived(introSeatRotation ?? seatRotation);
+	const interactiveWheelSeatRotation = $derived(
+		wheelSeatRotation + springDragRotationOffset,
+	);
 	const wheelRotationDurationMs = $derived(
-		introSeatRotation === null ? 500 : INTRO_ROTATION_DURATION_MS,
+		springDragIsActive
+			? 0
+			: springDragRotationOffset !== 0
+				? SPRING_DRAG_RETURN_DURATION_MS
+				: introSeatRotation === null
+					? SPRING_DRAG_RETURN_DURATION_MS
+					: INTRO_ROTATION_DURATION_MS,
 	);
 	const wheelRotationEasing = $derived(
 		introSeatRotation === null
@@ -234,6 +252,79 @@
 		});
 	}
 
+	function resetSpringDrag() {
+		springDragPointerId = null;
+		springDragIsActive = false;
+		springDragRotationOffset = 0;
+	}
+
+	function hasOpenPopover() {
+		try {
+			return document.querySelector('[popover]:popover-open') !== null;
+		} catch {
+			return false;
+		}
+	}
+
+	function isSpringDragIgnoredTarget(/** @type {EventTarget | null} */ target) {
+		return (
+			target instanceof Element &&
+			target.closest(SPRING_DRAG_IGNORE_SELECTOR) !== null
+		);
+	}
+
+	function canStartSpringDrag(/** @type {PointerEvent} */ event) {
+		return (
+			event.isPrimary &&
+			event.pointerType !== 'mouse' &&
+			game.status === 'playing' &&
+			question !== null &&
+			introSeatRotation === null &&
+			!dialogOpen &&
+			!undoDialogOpen &&
+			!hasOpenPopover() &&
+			!isSpringDragIgnoredTarget(event.target)
+		);
+	}
+
+	function handleSpringDragPointerDown(
+		/** @type {PointerEvent & { currentTarget: HTMLElement }} */ event,
+	) {
+		if (!canStartSpringDrag(event)) return;
+
+		springDragPointerId = event.pointerId;
+		springDragStartY = event.clientY;
+		springDragRotationOffset = 0;
+		springDragIsActive = true;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		event.preventDefault();
+	}
+
+	function handleSpringDragPointerMove(/** @type {PointerEvent} */ event) {
+		if (springDragPointerId !== event.pointerId) return;
+
+		const deltaY = event.clientY - springDragStartY;
+		springDragRotationOffset = clamp(
+			deltaY * SPRING_DRAG_ROTATION_PER_PX,
+			-SPRING_DRAG_MAX_ROTATION,
+			SPRING_DRAG_MAX_ROTATION,
+		);
+		event.preventDefault();
+	}
+
+	function handleSpringDragPointerEnd(
+		/** @type {PointerEvent & { currentTarget: HTMLElement }} */ event,
+	) {
+		if (springDragPointerId !== event.pointerId) return;
+
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+
+		resetSpringDrag();
+		event.preventDefault();
+	}
+
 	function preventDefault(/** @type {Event} */ event) {
 		event.preventDefault();
 	}
@@ -339,6 +430,17 @@
 	});
 
 	$effect(() => {
+		if (
+			game.status !== 'playing' ||
+			dialogOpen ||
+			undoDialogOpen ||
+			introSeatRotation !== null
+		) {
+			resetSpringDrag();
+		}
+	});
+
+	$effect(() => {
 		const round = game.currentRound;
 		const starter = currentPlayer;
 		const roundQuestion = round?.question ?? null;
@@ -429,6 +531,11 @@
 		bind:this={gameSurfaceEl}
 		class="main--game"
 		data-question-type={questionTypeConfig?.cssToken}
+		onpointerdown={handleSpringDragPointerDown}
+		onpointermove={handleSpringDragPointerMove}
+		onpointerup={handleSpringDragPointerEnd}
+		onpointercancel={handleSpringDragPointerEnd}
+		onlostpointercapture={handleSpringDragPointerEnd}
 		style:--current-player-color={currentPlayer
 			? `var(--${currentPlayer.color})`
 			: null}
@@ -455,7 +562,7 @@
 				answers={question.options}
 				correctAnswers={question.correctAnswers}
 				blobs={blobStates}
-				seatRotation={wheelSeatRotation}
+				seatRotation={interactiveWheelSeatRotation}
 				rotationDurationMs={wheelRotationDurationMs}
 				rotationEasing={wheelRotationEasing}
 				{undoableBlobIndex}
