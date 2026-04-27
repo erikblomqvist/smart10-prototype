@@ -1,6 +1,7 @@
 <script>
 	import AnswerBlob from './AnswerBlob.svelte';
 	import AnswerTextPopover from './AnswerTextPopover.svelte';
+	import { QUESTION_TYPES } from '../data/questionTypes.js';
 
 	/**
 	 * @type {{
@@ -32,6 +33,9 @@
 	} = $props();
 
 	const answerBlobs = $derived(blobs ?? answers.map(() => null));
+	const questionTypeToken = $derived(
+		QUESTION_TYPES[questionType]?.cssToken ?? 'standard',
+	);
 	const popoverIdPrefix = Math.random().toString(36).slice(2);
 
 	/** @param {number} index */
@@ -44,7 +48,7 @@
 	class="container"
 	style="--seat-rotation:{seatRotation};--rotation-duration-ms:{rotationDurationMs};--rotation-easing:{rotationEasing}"
 >
-	<div class="question">
+	<div class={`question question--${questionTypeToken}`}>
 		<p>{questionText}</p>
 	</div>
 
@@ -147,21 +151,146 @@
 	}
 
 	.question {
+		--question-pattern-width: clamp(
+			0.45rem,
+			calc(var(--question-size) * 0.035),
+			0.8rem
+		);
+		--question-pattern-color: var(--question-color);
+		--question-pattern: var(--question-color);
+
 		box-sizing: border-box;
 		position: relative;
 		z-index: 1;
 		display: grid;
 		place-items: center;
 		border-radius: 50%;
-		border: 4px solid var(--question-color);
+		overflow: hidden;
 		width: var(--question-size);
 		height: var(--question-size);
 		padding: var(--question-padding);
+		background: var(--white);
 		box-shadow: 0 0 0 1px hsl(0 0% 0%);
 		text-align: center;
 	}
 
+	.question::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		border-radius: inherit;
+		background: var(--question-pattern);
+		pointer-events: none;
+		-webkit-mask: radial-gradient(
+			farthest-side,
+			transparent calc(100% - var(--question-pattern-width)),
+			hsl(0 0% 0%) calc(100% - var(--question-pattern-width) + 1px)
+		);
+		mask: radial-gradient(
+			farthest-side,
+			transparent calc(100% - var(--question-pattern-width)),
+			hsl(0 0% 0%) calc(100% - var(--question-pattern-width) + 1px)
+		);
+	}
+
+	.question--standard {
+		--question-pattern: radial-gradient(
+					circle at 50% 20%,
+					var(--question-pattern-color) 0 0.22rem,
+					transparent 0.24rem
+				)
+				0 0 / 1rem 0.65rem,
+			radial-gradient(
+					circle at 50% 80%,
+					var(--question-pattern-color) 0 0.22rem,
+					transparent 0.24rem
+				)
+				0.5rem 0 / 1rem 0.65rem;
+	}
+
+	.question--boolean {
+		--question-pattern: repeating-conic-gradient(
+			from 9deg,
+			var(--question-pattern-color) 0deg 13deg,
+			transparent 13deg 26deg
+		);
+	}
+
+	.question--rank {
+		--question-pattern: repeating-conic-gradient(
+				from 2deg,
+				hsl(0 0% 0% / 0.25) 0deg 2deg,
+				transparent 2deg 10deg
+			),
+			repeating-linear-gradient(
+				90deg,
+				var(--question-pattern-color) 0 0.18rem,
+				transparent 0.18rem 0.36rem,
+				var(--question-pattern-color) 0.36rem 0.62rem,
+				transparent 0.62rem 0.95rem
+			);
+	}
+
+	.question--choose-between {
+		--question-pattern: conic-gradient(
+					from 45deg,
+					var(--question-pattern-color) 0 25%,
+					transparent 0 50%,
+					var(--question-pattern-color) 0 75%,
+					transparent 0
+				)
+				0 0 / 0.9rem 0.9rem;
+	}
+
+	.question--colors {
+		--question-pattern: radial-gradient(
+					circle,
+					hsl(330 100% 71%) 0 0.16rem,
+					transparent 0.18rem
+				)
+				0 0 / 0.62rem 0.62rem,
+			radial-gradient(circle, hsl(46 100% 62%) 0 0.18rem, transparent 0.2rem)
+				0.3rem 0.1rem / 0.72rem 0.72rem,
+			radial-gradient(circle, hsl(206 100% 42%) 0 0.14rem, transparent 0.16rem)
+				0.1rem 0.36rem / 0.68rem 0.68rem;
+	}
+
+	.question--numbers {
+		--question-pattern: linear-gradient(
+					90deg,
+					transparent 0 30%,
+					var(--question-pattern-color) 30% 45%,
+					transparent 45% 55%,
+					var(--question-pattern-color) 55% 70%,
+					transparent 70%
+				)
+				0 0 / 0.9rem 0.9rem,
+			linear-gradient(
+					0deg,
+					var(--question-pattern-color) 0 18%,
+					transparent 18% 82%,
+					var(--question-pattern-color) 82% 100%
+				)
+				0.45rem 0.45rem / 0.9rem 0.9rem;
+	}
+
+	.question--century-decade {
+		--question-pattern: repeating-conic-gradient(
+				from -1deg,
+				var(--question-pattern-color) 0deg 3deg,
+				transparent 3deg 10deg
+			),
+			repeating-conic-gradient(
+				from 0deg,
+				hsl(0 0% 0% / 0.3) 0deg 1deg,
+				transparent 1deg 30deg
+			);
+	}
+
 	.question p {
+		position: relative;
+		z-index: 1;
 		margin: 0;
 		font-size: clamp(0.875rem, calc(var(--question-size) * 0.13), 1.5rem);
 		line-height: 1.1;
