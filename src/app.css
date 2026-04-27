@@ -89,6 +89,28 @@ body {
 	font-family: 'Yanone Kaffeesatz', sans-serif;
 }
 
+html.game-interaction-lock,
+body.game-interaction-lock {
+	position: fixed;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	overscroll-behavior: none;
+	touch-action: none;
+}
+
+body.game-interaction-lock {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+body.game-interaction-lock [data-game-scroll-lock-allow] {
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+	touch-action: pan-y;
+}
+
 main {
 	box-sizing: border-box;
 	display: grid;

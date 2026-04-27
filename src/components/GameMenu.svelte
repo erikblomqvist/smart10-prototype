@@ -48,7 +48,7 @@
 		>
 	</summary>
 
-	<div class="game-menu__panel">
+	<div class="game-menu__panel" data-game-scroll-lock-allow>
 		<section class="game-menu__section">
 			<h2 class="game-menu__heading">{$_('menu.current_round')}</h2>
 			<ScoreList {players} />

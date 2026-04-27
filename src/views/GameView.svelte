@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import {
 		game,
@@ -77,6 +78,149 @@
 		lastPlayer ? getSeatRotation(lastPlayer.seatPosition) : 0,
 	);
 
+	const GAME_LOCK_CLASS = 'game-interaction-lock';
+	const GAME_LOCK_SCROLL_ALLOW_SELECTOR = '[data-game-scroll-lock-allow]';
+	const DOUBLE_TAP_DELAY = 300;
+	const lockedElements = $derived([document.documentElement, document.body]);
+	let lastTouchEnd = 0;
+	let lastTouchY = 0;
+	let gameSurfaceEl = $state(/** @type {HTMLElement | null} */ (null));
+	let viewportResetFrame = /** @type {number | null} */ (null);
+
+	function setGameInteractionLock(/** @type {boolean} */ locked) {
+		lockedElements.forEach((element) =>
+			element.classList.toggle(GAME_LOCK_CLASS, locked),
+		);
+	}
+
+	function resetGameViewport() {
+		const wasLocked = document.body.classList.contains(GAME_LOCK_CLASS);
+
+		if (wasLocked) {
+			setGameInteractionLock(false);
+		}
+
+		window.scrollTo(0, 0);
+		document.scrollingElement?.scrollTo(0, 0);
+		document.documentElement.scrollTop = 0;
+		document.body.scrollTop = 0;
+
+		if (gameSurfaceEl) {
+			gameSurfaceEl.scrollTop = 0;
+			gameSurfaceEl.scrollLeft = 0;
+		}
+
+		if (wasLocked) {
+			setGameInteractionLock(true);
+		}
+	}
+
+	function scheduleGameViewportReset() {
+		if (viewportResetFrame !== null) {
+			cancelAnimationFrame(viewportResetFrame);
+		}
+
+		resetGameViewport();
+		viewportResetFrame = requestAnimationFrame(() => {
+			resetGameViewport();
+			viewportResetFrame = requestAnimationFrame(() => {
+				resetGameViewport();
+				viewportResetFrame = null;
+			});
+		});
+	}
+
+	function preventDefault(/** @type {Event} */ event) {
+		event.preventDefault();
+	}
+
+	function getAllowedGameScroller(/** @type {EventTarget | null} */ target) {
+		return target instanceof Element
+			? target.closest(GAME_LOCK_SCROLL_ALLOW_SELECTOR)
+			: null;
+	}
+
+	function canScrollAllowedElement(
+		/** @type {Element} */ element,
+		/** @type {number} */ deltaY,
+	) {
+		const scrollableElement = /** @type {HTMLElement} */ (element);
+		const canScroll = scrollableElement.scrollHeight > scrollableElement.clientHeight;
+		const isAtTop = scrollableElement.scrollTop <= 0;
+		const isAtBottom =
+			scrollableElement.scrollTop + scrollableElement.clientHeight >=
+			scrollableElement.scrollHeight - 1;
+
+		return canScroll && !((deltaY > 0 && isAtTop) || (deltaY < 0 && isAtBottom));
+	}
+
+	function handleLockedTouchStart(/** @type {TouchEvent} */ event) {
+		lastTouchY = event.touches[0]?.clientY ?? 0;
+	}
+
+	function handleLockedTouchMove(/** @type {TouchEvent} */ event) {
+		const allowedScroller = getAllowedGameScroller(event.target);
+		const currentTouchY = event.touches[0]?.clientY ?? lastTouchY;
+		const deltaY = currentTouchY - lastTouchY;
+
+		if (
+			event.touches.length > 1 ||
+			!allowedScroller ||
+			!canScrollAllowedElement(allowedScroller, deltaY)
+		) {
+			event.preventDefault();
+		}
+
+		lastTouchY = currentTouchY;
+	}
+
+	function handleLockedTouchEnd(/** @type {TouchEvent} */ event) {
+		const now = Date.now();
+
+		if (now - lastTouchEnd <= DOUBLE_TAP_DELAY) {
+			event.preventDefault();
+		}
+
+		lastTouchEnd = now;
+	}
+
+	onMount(() => {
+		const touchOptions = { passive: false };
+
+		resetGameViewport();
+		setGameInteractionLock(true);
+		document.addEventListener('touchstart', handleLockedTouchStart, {
+			passive: true,
+		});
+		document.addEventListener('touchmove', handleLockedTouchMove, touchOptions);
+		document.addEventListener('touchend', handleLockedTouchEnd, touchOptions);
+		document.addEventListener('gesturestart', preventDefault);
+		document.addEventListener('gesturechange', preventDefault);
+		document.addEventListener('gestureend', preventDefault);
+
+		return () => {
+			if (viewportResetFrame !== null) {
+				cancelAnimationFrame(viewportResetFrame);
+			}
+
+			setGameInteractionLock(false);
+			document.removeEventListener('touchstart', handleLockedTouchStart);
+			document.removeEventListener('touchmove', handleLockedTouchMove);
+			document.removeEventListener('touchend', handleLockedTouchEnd);
+			document.removeEventListener('gesturestart', preventDefault);
+			document.removeEventListener('gesturechange', preventDefault);
+			document.removeEventListener('gestureend', preventDefault);
+		};
+	});
+
+	$effect(() => {
+		const roundNumber = game.currentRound?.roundNumber;
+
+		if (game.status === 'playing' && roundNumber) {
+			scheduleGameViewportReset();
+		}
+	});
+
 	const pendingBlobLabel = $derived(
 		pendingBlobIndex !== null && question
 			? question.options[pendingBlobIndex]
@@ -134,6 +278,7 @@
 
 {#if game.status === 'playing'}
 	<main
+		bind:this={gameSurfaceEl}
 		class="main--game"
 		data-question-type={questionTypeConfig?.cssToken}
 		style:--current-player-color={currentPlayer ? `var(--${currentPlayer.color})` : null}
