@@ -58,7 +58,9 @@
 	const roundIsOver = $derived(checkRoundOver());
 	const undoIsAvailable = $derived(canUndoLastMove());
 	const undoableBlobIndex = $derived(
-		undoIsAvailable ? (game.currentRound?.lastAnswerMove?.blobIndex ?? null) : null,
+		undoIsAvailable
+			? (game.currentRound?.lastAnswerMove?.blobIndex ?? null)
+			: null,
 	);
 
 	function getSeatRotation(/** @type {number} */ seatPosition) {
@@ -78,6 +80,26 @@
 		lastPlayer ? getSeatRotation(lastPlayer.seatPosition) : 0,
 	);
 
+	const INTRO_ROTATION_DURATION_MS = 800;
+	const INTRO_ROTATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+	const DEFAULT_ROTATION_EASING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+	const INTRO_READING_BASE_MS = 1400;
+	const INTRO_READING_MS_PER_CHARACTER = 25;
+	const INTRO_READING_MIN_MS = 1800;
+	const INTRO_READING_MAX_MS = 4000;
+	let introSeatRotation = $state(/** @type {number|null} */ (null));
+	let playedIntroRoundKey = /** @type {string | null} */ (null);
+	let introTimerIds = /** @type {ReturnType<typeof setTimeout>[]} */ ([]);
+	const wheelSeatRotation = $derived(introSeatRotation ?? seatRotation);
+	const wheelRotationDurationMs = $derived(
+		introSeatRotation === null ? 500 : INTRO_ROTATION_DURATION_MS,
+	);
+	const wheelRotationEasing = $derived(
+		introSeatRotation === null
+			? DEFAULT_ROTATION_EASING
+			: INTRO_ROTATION_EASING,
+	);
+
 	const GAME_LOCK_CLASS = 'game-interaction-lock';
 	const GAME_LOCK_SCROLL_ALLOW_SELECTOR = '[data-game-scroll-lock-allow]';
 	const DOUBLE_TAP_DELAY = 300;
@@ -86,6 +108,88 @@
 	let lastTouchY = 0;
 	let gameSurfaceEl = $state(/** @type {HTMLElement | null} */ (null));
 	let viewportResetFrame = /** @type {number | null} */ (null);
+
+	function clamp(
+		/** @type {number} */ value,
+		/** @type {number} */ min,
+		/** @type {number} */ max,
+	) {
+		return Math.min(Math.max(value, min), max);
+	}
+
+	function getQuestionReadingMs(/** @type {string} */ text) {
+		return clamp(
+			INTRO_READING_BASE_MS +
+				text.length * INTRO_READING_MS_PER_CHARACTER,
+			INTRO_READING_MIN_MS,
+			INTRO_READING_MAX_MS,
+		);
+	}
+
+	function clearIntroTimers() {
+		introTimerIds.forEach(clearTimeout);
+		introTimerIds = [];
+	}
+
+	function resetIntroRotation() {
+		clearIntroTimers();
+		introSeatRotation = null;
+	}
+
+	function scheduleIntroStep(
+		/** @type {number} */ delay,
+		/** @type {() => void} */ callback,
+	) {
+		const timerId = setTimeout(callback, delay);
+		introTimerIds = [...introTimerIds, timerId];
+	}
+
+	function getIntroPlayerPath(
+		/** @type {{ id: string, seatPosition: number }} */ starter,
+	) {
+		const sortedPlayers = [...game.players].sort(
+			(a, b) => a.turnOrder - b.turnOrder,
+		);
+		const starterIndex = sortedPlayers.findIndex(
+			(player) => player.id === starter.id,
+		);
+
+		if (starterIndex === -1 || sortedPlayers.length <= 1) {
+			return [];
+		}
+
+		const rotatedPlayers = [
+			...sortedPlayers.slice(starterIndex),
+			...sortedPlayers.slice(0, starterIndex),
+		];
+
+		return [...rotatedPlayers, starter];
+	}
+
+	function startRoundIntro(
+		/** @type {{ id: string, seatPosition: number }} */ starter,
+		/** @type {string} */ questionText,
+	) {
+		const playerPath = getIntroPlayerPath(starter);
+		if (!playerPath.length) return false;
+
+		clearIntroTimers();
+
+		const readingMs = getQuestionReadingMs(questionText);
+		introSeatRotation = getSeatRotation(starter.seatPosition);
+
+		playerPath.slice(1).forEach((player, index) => {
+			scheduleIntroStep(readingMs * (index + 1), () => {
+				introSeatRotation = getSeatRotation(player.seatPosition);
+			});
+		});
+
+		scheduleIntroStep(readingMs * playerPath.length, () => {
+			resetIntroRotation();
+		});
+
+		return true;
+	}
 
 	function setGameInteractionLock(/** @type {boolean} */ locked) {
 		lockedElements.forEach((element) =>
@@ -145,13 +249,17 @@
 		/** @type {number} */ deltaY,
 	) {
 		const scrollableElement = /** @type {HTMLElement} */ (element);
-		const canScroll = scrollableElement.scrollHeight > scrollableElement.clientHeight;
+		const canScroll =
+			scrollableElement.scrollHeight > scrollableElement.clientHeight;
 		const isAtTop = scrollableElement.scrollTop <= 0;
 		const isAtBottom =
 			scrollableElement.scrollTop + scrollableElement.clientHeight >=
 			scrollableElement.scrollHeight - 1;
 
-		return canScroll && !((deltaY > 0 && isAtTop) || (deltaY < 0 && isAtBottom));
+		return (
+			canScroll &&
+			!((deltaY > 0 && isAtTop) || (deltaY < 0 && isAtBottom))
+		);
 	}
 
 	function handleLockedTouchStart(/** @type {TouchEvent} */ event) {
@@ -192,8 +300,16 @@
 		document.addEventListener('touchstart', handleLockedTouchStart, {
 			passive: true,
 		});
-		document.addEventListener('touchmove', handleLockedTouchMove, touchOptions);
-		document.addEventListener('touchend', handleLockedTouchEnd, touchOptions);
+		document.addEventListener(
+			'touchmove',
+			handleLockedTouchMove,
+			touchOptions,
+		);
+		document.addEventListener(
+			'touchend',
+			handleLockedTouchEnd,
+			touchOptions,
+		);
 		document.addEventListener('gesturestart', preventDefault);
 		document.addEventListener('gesturechange', preventDefault);
 		document.addEventListener('gestureend', preventDefault);
@@ -204,6 +320,7 @@
 			}
 
 			setGameInteractionLock(false);
+			resetIntroRotation();
 			document.removeEventListener('touchstart', handleLockedTouchStart);
 			document.removeEventListener('touchmove', handleLockedTouchMove);
 			document.removeEventListener('touchend', handleLockedTouchEnd);
@@ -218,6 +335,37 @@
 
 		if (game.status === 'playing' && roundNumber) {
 			scheduleGameViewportReset();
+		}
+	});
+
+	$effect(() => {
+		const round = game.currentRound;
+		const starter = currentPlayer;
+		const roundQuestion = round?.question ?? null;
+		const playerCount = game.players.length;
+		const roundKey = roundQuestion
+			? `${round?.roundNumber ?? 0}:${roundQuestion.id}`
+			: null;
+		const hasRoundProgress =
+			(round?.answeredBlobs.length ?? 0) > 0 ||
+			round?.lastPlayerId !== null;
+
+		if (
+			game.status !== 'playing' ||
+			!roundKey ||
+			!starter ||
+			playerCount <= 1 ||
+			hasRoundProgress ||
+			playedIntroRoundKey === roundKey
+		) {
+			if (game.status !== 'playing' || hasRoundProgress) {
+				resetIntroRotation();
+			}
+			return;
+		}
+
+		if (startRoundIntro(starter, roundQuestion.text)) {
+			playedIntroRoundKey = roundKey;
 		}
 	});
 
@@ -281,7 +429,9 @@
 		bind:this={gameSurfaceEl}
 		class="main--game"
 		data-question-type={questionTypeConfig?.cssToken}
-		style:--current-player-color={currentPlayer ? `var(--${currentPlayer.color})` : null}
+		style:--current-player-color={currentPlayer
+			? `var(--${currentPlayer.color})`
+			: null}
 	>
 		<GameMenu
 			{currentPlayer}
@@ -293,7 +443,11 @@
 		/>
 
 		{#if question}
-			<QuestionMeta questionType={question.type} deck={question.deck} deckIcon={question.deckIcon} />
+			<QuestionMeta
+				questionType={question.type}
+				deck={question.deck}
+				deckIcon={question.deckIcon}
+			/>
 
 			<QuestionWheel
 				questionType={question.type}
@@ -301,7 +455,9 @@
 				answers={question.options}
 				correctAnswers={question.correctAnswers}
 				blobs={blobStates}
-				{seatRotation}
+				seatRotation={wheelSeatRotation}
+				rotationDurationMs={wheelRotationDurationMs}
+				rotationEasing={wheelRotationEasing}
 				{undoableBlobIndex}
 				onblobclick={handleBlobClick}
 				onundoblobclick={handleUndoBlobClick}

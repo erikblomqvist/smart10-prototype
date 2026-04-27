@@ -10,9 +10,11 @@
 	 *   correctAnswers: (boolean|string|number|{ text: string, backgroundColor: string })[],
 	 *   blobs?: (boolean|null)[],
 	 *   seatRotation?: number,
- *   undoableBlobIndex?: number|null,
+	 *   rotationDurationMs?: number,
+	 *   rotationEasing?: string,
+	 *   undoableBlobIndex?: number|null,
 	 *   onblobclick?: (index: number) => void,
- *   onundoblobclick?: (index: number) => void,
+	 *   onundoblobclick?: (index: number) => void,
 	 * }}
 	 */
 	let {
@@ -22,6 +24,8 @@
 		correctAnswers,
 		blobs,
 		seatRotation = 0,
+		rotationDurationMs = 500,
+		rotationEasing = 'cubic-bezier(0.34, 1.56, 0.64, 1)',
 		undoableBlobIndex = null,
 		onblobclick,
 		onundoblobclick,
@@ -36,7 +40,10 @@
 	}
 </script>
 
-<div class="container" style="--seat-rotation:{seatRotation}">
+<div
+	class="container"
+	style="--seat-rotation:{seatRotation};--rotation-duration-ms:{rotationDurationMs};--rotation-easing:{rotationEasing}"
+>
 	<div class="question">
 		<p>{questionText}</p>
 	</div>
@@ -95,7 +102,8 @@
 		height: var(--container-size);
 		background-color: hsl(0, 0%, 100%);
 		transform: rotate(calc(var(--seat-rotation, 0) * 1deg));
-		transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+		transition: transform calc(var(--rotation-duration-ms, 500) * 1ms)
+			var(--rotation-easing, cubic-bezier(0.34, 1.56, 0.64, 1));
 	}
 
 	.container::after {
