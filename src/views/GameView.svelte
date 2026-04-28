@@ -27,6 +27,8 @@
 	let dialogOpen = $state(false);
 	let pendingBlobIndex = $state(/** @type {number|null} */ (null));
 	let undoDialogOpen = $state(false);
+	let reviewRevealedBlobIndexes = $state(/** @type {number[]} */ ([]));
+	let reviewRevealRoundKey = /** @type {string|null} */ (null);
 
 	const currentPlayer = $derived(
 		game.players.find((p) => p.id === game.currentPlayerId) ?? null,
@@ -51,7 +53,8 @@
 		question
 			? question.options.map((_, i) => {
 					const results = game.currentRound?.blobResults ?? {};
-					return i in results ? results[i] : true;
+					if (i in results) return results[i];
+					return reviewRevealedBlobIndexes.includes(i) ? true : null;
 				})
 			: [],
 	);
@@ -511,6 +514,23 @@
 		}
 	});
 
+	$effect(() => {
+		const roundKey = game.currentRound
+			? `${game.currentRound.roundNumber}:${game.currentRound.question.id}`
+			: null;
+
+		if (game.status !== 'round_review' || !roundKey) {
+			reviewRevealedBlobIndexes = [];
+			reviewRevealRoundKey = null;
+			return;
+		}
+
+		if (reviewRevealRoundKey !== roundKey) {
+			reviewRevealedBlobIndexes = [];
+			reviewRevealRoundKey = roundKey;
+		}
+	});
+
 	const pendingBlobLabel = $derived(
 		pendingBlobIndex !== null && question
 			? question.options[pendingBlobIndex]
@@ -533,6 +553,11 @@
 		if (streakCelebrationActive) return;
 		if (blobIndex !== undoableBlobIndex) return;
 		undoDialogOpen = true;
+	}
+
+	function handleReviewBlobClick(/** @type {number} */ blobIndex) {
+		if (reviewRevealedBlobIndexes.includes(blobIndex)) return;
+		reviewRevealedBlobIndexes = [...reviewRevealedBlobIndexes, blobIndex];
 	}
 
 	function handleDialogResult(/** @type {boolean} */ isCorrect) {
@@ -681,6 +706,7 @@
 				answerMedia={question.answerMedia}
 				blobs={reviewBlobStates}
 				seatRotation={reviewSeatRotation}
+				onblobclick={handleReviewBlobClick}
 			/>
 		{/if}
 
