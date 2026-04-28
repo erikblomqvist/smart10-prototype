@@ -6,6 +6,7 @@
 	import DeckFormView from './admin/DeckFormView.svelte';
 	import QuestionsView from './admin/QuestionsView.svelte';
 	import QuestionFormView from './admin/QuestionFormView.svelte';
+	import QuestionImportView from './admin/QuestionImportView.svelte';
 	import UsersView from './admin/UsersView.svelte';
 
 	/** @type {import('@supabase/supabase-js').User|null} */
@@ -43,6 +44,7 @@
 		const deckEdit = h.match(/^\/decks\/([^/]+)$/);
 		if (deckEdit) return { view: 'deck-form', id: deckEdit[1] };
 		if (h === '/questions') return { view: 'questions' };
+		if (h === '/questions/import') return { view: 'question-import' };
 		if (h === '/questions/new') return { view: 'question-form', id: null };
 		const qEdit = h.match(/^\/questions\/([^/]+)$/);
 		if (qEdit) return { view: 'question-form', id: qEdit[1] };
@@ -94,6 +96,8 @@
 				<DeckFormView id={route.id} {navigate} />
 			{:else if route.view === 'questions'}
 				<QuestionsView {navigate} />
+			{:else if route.view === 'question-import'}
+				<QuestionImportView {navigate} />
 			{:else if route.view === 'question-form'}
 				<QuestionFormView id={route.id} {navigate} />
 			{:else if route.view === 'users'}

@@ -551,6 +551,10 @@ body {
 	color: #60a5fa;
 }
 
+.admin-file-upload input {
+	display: none;
+}
+
 .admin-image-preview {
 	display: flex;
 	flex-direction: column;
@@ -657,6 +661,165 @@ body {
 	min-width: 30px;
 	font-size: 11px;
 	color: #888;
+}
+
+/* ─── Question import ───────────────────────────────────────────────────── */
+
+.admin-import {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.admin-import-panel,
+.admin-import-card {
+	padding: 18px;
+	border-radius: 12px;
+	background: #1a1a1a;
+	border: 1px solid #222;
+}
+
+.admin-import-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.admin-import-list {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.admin-import-card {
+	display: grid;
+	grid-template-columns: 180px minmax(0, 1fr);
+	gap: 18px;
+}
+
+.admin-import-card--collapsed {
+	grid-template-columns: 64px minmax(0, 1fr);
+	align-items: center;
+	padding: 12px 14px;
+}
+
+.admin-import-card__media {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	min-width: 0;
+}
+
+.admin-import-card__media img {
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	border-radius: 9px;
+	border: 1px solid #2a2a2a;
+	background: #111;
+}
+
+.admin-import-card--collapsed .admin-import-card__media {
+	gap: 4px;
+}
+
+.admin-import-card--collapsed .admin-import-card__media img {
+	width: 48px;
+	height: 48px;
+	aspect-ratio: 1;
+}
+
+.admin-import-card--collapsed .admin-import-card__media small {
+	display: none;
+}
+
+.admin-import-card__media small {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #666;
+	font-size: 12px;
+}
+
+.admin-import-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.admin-import-number {
+	max-width: 180px;
+}
+
+.admin-import-confidence {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.admin-import-confidence span {
+	padding: 3px 7px;
+	border-radius: 999px;
+	background: #141414;
+	border: 1px solid #2a2a2a;
+	color: #777;
+	font-size: 11px;
+}
+
+.admin-import-confidence .admin-import-confidence__pill--complete {
+	background: #14532d33;
+	border-color: #16a34a;
+	color: #4ade80;
+}
+
+.admin-import-saved-summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.admin-import-saved-summary strong {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #e8e8e8;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.admin-import-warnings,
+.admin-import-errors {
+	margin: 0;
+	padding: 10px 14px 10px 28px;
+	border-radius: 7px;
+	font-size: 13px;
+}
+
+.admin-import-warnings {
+	background: #78350f33;
+	border: 1px solid #92400e;
+	color: #fbbf24;
+}
+
+.admin-import-errors {
+	background: #7f1d1d33;
+	border: 1px solid #dc2626;
+	color: #fca5a5;
+}
+
+@media (max-width: 720px) {
+	.admin-import-card {
+		grid-template-columns: 1fr;
+	}
+
+	.admin-import-card__media img {
+		max-width: 220px;
+	}
 }
 
 /* ─── Login page ─────────────────────────────────────────────────────────── */

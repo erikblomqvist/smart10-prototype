@@ -65,6 +65,9 @@
 <div class="admin-page">
 	<div class="admin-page__header">
 		<h1 class="admin-page__title">Questions</h1>
+		<button class="admin-btn" type="button" onclick={() => navigate('/questions/import')}>
+			Import cards
+		</button>
 		<button class="admin-btn admin-btn--primary" type="button" onclick={() => navigate('/questions/new')}>
 			New question
 		</button>
