@@ -108,7 +108,7 @@
 	}
 
 	.review-panel__round-score {
-		color: var(--question-color, hsl(0 0% 100%));
+		color: var(--white);
 		font-size: var(--font-size-xl);
 		min-width: 2.5rem;
 		text-align: right;
@@ -128,7 +128,7 @@
 		border: none;
 		border-radius: 0.5rem;
 		padding: 0.75rem 1.25rem;
-		background-color: var(--question-color, var(--orange-600));
+		background-color: var(--orange-600);
 		color: var(--white);
 		font-family: 'Oswald', sans-serif;
 		font-size: var(--font-size-md);
