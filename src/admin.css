@@ -492,6 +492,24 @@ body {
 	color: #666;
 }
 
+.admin-testing-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 24px;
+	padding: 20px;
+	border-radius: 12px;
+	background: #1a1a1a;
+	border: 1px solid #222;
+}
+
+.admin-testing-panel__title {
+	margin: 0 0 6px;
+	font-size: 15px;
+	font-weight: 600;
+	color: #fff;
+}
+
 /* ─── Icon picker ────────────────────────────────────────────────────────── */
 
 .admin-icon-picker-toolbar {

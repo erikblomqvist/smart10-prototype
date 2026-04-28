@@ -48,6 +48,7 @@
  */
 
 import { supabase } from './supabase.js';
+import { getForcedFirstQuestionId } from './testingOptions.js';
 import { questionsByType } from '../data/game.js';
 
 // Used when Supabase is not configured or decks have no questions yet
@@ -147,6 +148,21 @@ async function fetchQuestionsForDecks(deckIds) {
 	return questions.length > 0 ? questions : MOCK_QUESTIONS;
 }
 
+/** @param {string|null} questionId */
+async function fetchForcedQuestion(questionId) {
+	if (!supabase || !questionId) return null;
+	const { data, error } = await supabase
+		.from('questions')
+		.select('*, decks(name, icon)')
+		.eq('id', questionId)
+		.maybeSingle();
+	if (error) {
+		console.warn('Failed to load forced first question:', error.message);
+		return null;
+	}
+	return data ? dbRowToQuestion(data) : null;
+}
+
 async function syncGameState() {
 	if (!supabase || !game.dbGameId) return;
 
@@ -238,7 +254,9 @@ export async function initGame(setup) {
 
 	const startingPlayer = gamePlayers[setup.startingPlayerIndex] ?? gamePlayers[0];
 	const code = generateCode();
-	const firstQuestion = pickNextQuestion();
+	const firstQuestion =
+		(await fetchForcedQuestion(getForcedFirstQuestionId())) ??
+		pickNextQuestion();
 
 	game.status = 'playing';
 	game.code = code;
