@@ -7,12 +7,17 @@
 
 	const isEdit = $derived(id !== null);
 	const NUM_BLOBS = 10;
+	const OPTION_IMAGE_BUCKET = 'question-option-images';
+	const OPTION_IMAGE_MAX_SIZE = 512;
+	const OPTION_IMAGE_QUALITY = 0.78;
+	const draftMediaId = crypto.randomUUID();
 
 	// --- Form state ---
 	let deckId = $state('');
 	let type = $state(/** @type {import('../data/questionTypes.js').QuestionType} */ ('standard'));
 	let questionText = $state('');
 	let questionNumber = $state(/** @type {number|''} */ (''));
+	let optionDisplayMode = $state(/** @type {'text'|'image'} */ ('text'));
 	let options = $state(/** @type {string[]} */ (Array(NUM_BLOBS).fill('')));
 	// correctAnswers: type-specific values
 	let correctAnswers = $state(/** @type {any[]} */ (Array(NUM_BLOBS).fill('')));
@@ -20,10 +25,11 @@
 	let colorHsl = $state(
 		Array(NUM_BLOBS).fill(null).map(() => ({ h: 0, s: 80, l: 50 })),
 	);
-	// Media per blob: { url, spotify_url, youtube_url }
+	// Media per blob: { url, spotify_url, youtube_url, option_image_url, option_image_path }
 	let media = $state(
-		Array(NUM_BLOBS).fill(null).map(() => ({ url: '', spotify_url: '', youtube_url: '' })),
+		Array(NUM_BLOBS).fill(null).map(() => createEmptyMedia()),
 	);
+	let imageUploading = $state(Array(NUM_BLOBS).fill(false));
 
 	/** @type {{ id: string, name: string }[]} */
 	let decks = $state([]);
@@ -91,9 +97,24 @@
 			url: m?.url ?? '',
 			spotify_url: m?.spotify_url ?? '',
 			youtube_url: m?.youtube_url ?? '',
+			option_image_url: m?.option_image_url ?? '',
+			option_image_path: m?.option_image_path ?? '',
+			option_image_alt: m?.option_image_alt ?? '',
 		}));
+		optionDisplayMode = media.every((m) => m.option_image_url) ? 'image' : 'text';
 
 		loading = false;
+	}
+
+	function createEmptyMedia() {
+		return {
+			url: '',
+			spotify_url: '',
+			youtube_url: '',
+			option_image_url: '',
+			option_image_path: '',
+			option_image_alt: '',
+		};
 	}
 
 	/** @param {number} i */
@@ -120,6 +141,11 @@
 		if (!deckId) { error = 'Please select a deck.'; return; }
 		if (!questionText.trim()) { error = 'Question text is required.'; return; }
 		if (options.some((o) => !o.trim())) { error = 'All 10 options must be filled in.'; return; }
+		if (imageUploading.some(Boolean)) { error = 'Wait for image uploads to finish.'; return; }
+		if (optionDisplayMode === 'image' && media.some((m) => !m.option_image_url)) {
+			error = 'Upload an image for all 10 options or switch back to text options.';
+			return;
+		}
 
 		// Serialize correct answers for colors
 		const finalAnswers = type === 'colors'
@@ -129,10 +155,17 @@
 				}))
 			: correctAnswers;
 
-		const finalMedia = media.map((m) => ({
+		const finalMedia = media.map((m, i) => ({
 			...(m.url ? { url: m.url } : {}),
 			...(m.spotify_url ? { spotify_url: m.spotify_url } : {}),
 			...(m.youtube_url ? { youtube_url: m.youtube_url } : {}),
+			...(optionDisplayMode === 'image' && m.option_image_url
+				? {
+						option_image_url: m.option_image_url,
+						option_image_path: m.option_image_path,
+						option_image_alt: m.option_image_alt || options[i] || '',
+					}
+				: {}),
 		}));
 
 		const payload = {
@@ -159,6 +192,99 @@
 			error = err.message ?? 'Failed to save.';
 			saving = false;
 		}
+	}
+
+	/**
+	 * @param {number} index
+	 * @param {Event} event
+	 */
+	async function handleOptionImageFile(index, event) {
+		const input = /** @type {HTMLInputElement} */ (event.currentTarget);
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		if (!supabase) {
+			error = 'Supabase is not configured.';
+			return;
+		}
+
+		error = '';
+		imageUploading[index] = true;
+		try {
+			const blob = await resizeOptionImage(file);
+			const path = buildOptionImagePath(index);
+			const { error: uploadError } = await supabase.storage
+				.from(OPTION_IMAGE_BUCKET)
+				.upload(path, blob, {
+					cacheControl: '31536000',
+					contentType: 'image/webp',
+					upsert: true,
+				});
+			if (uploadError) throw uploadError;
+
+			const { data } = supabase.storage.from(OPTION_IMAGE_BUCKET).getPublicUrl(path);
+			media[index] = {
+				...media[index],
+				option_image_url: data.publicUrl,
+				option_image_path: path,
+				option_image_alt: options[index] ?? '',
+			};
+		} catch (/** @type {any} */ err) {
+			error = err.message ?? 'Failed to upload option image.';
+		} finally {
+			imageUploading[index] = false;
+		}
+	}
+
+	/** @param {number} index */
+	function clearOptionImage(index) {
+		media[index] = {
+			...media[index],
+			option_image_url: '',
+			option_image_path: '',
+			option_image_alt: '',
+		};
+	}
+
+	/** @param {number} index */
+	function buildOptionImagePath(index) {
+		const questionKey = id ?? draftMediaId;
+		return `questions/${questionKey}/options/${index + 1}-${Date.now()}.webp`;
+	}
+
+	/** @param {File|Blob} file */
+	function resizeOptionImage(file) {
+		return new Promise((resolve, reject) => {
+			const url = URL.createObjectURL(file);
+			const image = new Image();
+			image.onload = () => {
+				const scale = Math.min(1, OPTION_IMAGE_MAX_SIZE / Math.max(image.width, image.height));
+				const canvas = document.createElement('canvas');
+				canvas.width = Math.max(1, Math.round(image.width * scale));
+				canvas.height = Math.max(1, Math.round(image.height * scale));
+				const context = canvas.getContext('2d');
+				if (!context) {
+					URL.revokeObjectURL(url);
+					reject(new Error('Could not prepare image.'));
+					return;
+				}
+				context.drawImage(image, 0, 0, canvas.width, canvas.height);
+				canvas.toBlob(
+					(blob) => {
+						URL.revokeObjectURL(url);
+						if (blob) resolve(blob);
+						else reject(new Error('Could not compress image.'));
+					},
+					'image/webp',
+					OPTION_IMAGE_QUALITY,
+				);
+			};
+			image.onerror = () => {
+				URL.revokeObjectURL(url);
+				reject(new Error('Could not read image.'));
+			};
+			image.src = url;
+		});
 	}
 
 	const TYPE_OPTIONS = [
@@ -217,6 +343,16 @@
 			<!-- Options + correct answers grid -->
 			<div class="admin-label">
 				Options &amp; correct answers
+				<div class="admin-segmented">
+					<label>
+						<input type="radio" bind:group={optionDisplayMode} value="text" disabled={saving} />
+						Text options
+					</label>
+					<label>
+						<input type="radio" bind:group={optionDisplayMode} value="image" disabled={saving} />
+						Image options
+					</label>
+				</div>
 				<div class="admin-options">
 					{#each options as _, i}
 						<div class="admin-option-row">
@@ -231,6 +367,28 @@
 								required
 								disabled={saving}
 							/>
+
+							{#if optionDisplayMode === 'image'}
+								<div class="admin-option-image">
+									{#if media[i].option_image_url}
+										<img src={media[i].option_image_url} alt={options[i] || `Option ${i + 1}`} />
+									{/if}
+									<label class="admin-btn admin-btn--sm">
+										{imageUploading[i] ? 'Uploading…' : media[i].option_image_url ? 'Replace image' : 'Upload image'}
+										<input
+											type="file"
+											accept="image/*"
+											onchange={(event) => handleOptionImageFile(i, event)}
+											disabled={saving || imageUploading[i]}
+										/>
+									</label>
+									{#if media[i].option_image_url}
+										<button class="admin-btn admin-btn--sm" type="button" onclick={() => clearOptionImage(i)} disabled={saving || imageUploading[i]}>
+											Clear
+										</button>
+									{/if}
+								</div>
+							{/if}
 
 							<!-- Correct answer — type-specific -->
 							{#if type === 'standard'}

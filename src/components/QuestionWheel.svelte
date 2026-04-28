@@ -9,6 +9,7 @@
 	 *   questionText: string,
 	 *   answers: string[],
 	 *   correctAnswers: (boolean|string|number|{ text: string, backgroundColor: string })[],
+	 *   answerMedia?: Record<string, any>[],
 	 *   blobs?: (boolean|null)[],
 	 *   seatRotation?: number,
 	 *   rotationDurationMs?: number,
@@ -23,6 +24,7 @@
 		questionText,
 		answers,
 		correctAnswers,
+		answerMedia = [],
 		blobs,
 		seatRotation = 0,
 		rotationDurationMs = 500,
@@ -36,7 +38,22 @@
 	const questionTypeToken = $derived(
 		QUESTION_TYPES[questionType]?.cssToken ?? 'standard',
 	);
+	const optionImageUrls = $derived(
+		answers.map((_, index) => getOptionImageUrl(answerMedia[index])),
+	);
+	const usesImageOptions = $derived(
+		optionImageUrls.length === answers.length &&
+			optionImageUrls.length > 0 &&
+			optionImageUrls.every(Boolean),
+	);
 	const popoverIdPrefix = Math.random().toString(36).slice(2);
+
+	/** @param {Record<string, any>|undefined} media */
+	function getOptionImageUrl(media) {
+		return typeof media?.option_image_url === 'string'
+			? media.option_image_url.trim()
+			: '';
+	}
 
 	/** @param {number} index */
 	function getAnswerPopoverId(index) {
@@ -72,12 +89,17 @@
 		{#each answers as answer, i}
 			<button
 				class="answer"
+				class:answer--image={usesImageOptions}
 				type="button"
 				popovertarget={getAnswerPopoverId(i)}
 				aria-label={`Show full answer: ${answer}`}
 				style="--index:{i + 1};--total:{answers.length}"
 			>
-				<span class="answer-text">{answer}</span>
+				{#if usesImageOptions}
+					<img class="answer-image" src={optionImageUrls[i]} alt={answer} loading="eager" />
+				{:else}
+					<span class="answer-text">{answer}</span>
+				{/if}
 			</button>
 		{/each}
 	</div>
@@ -384,6 +406,22 @@
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
+	}
+
+	.answer--image {
+		width: calc(var(--answer-slot-width) * 1.18);
+	}
+
+	.answer-image {
+		position: relative;
+		z-index: 1;
+		display: block;
+		box-sizing: border-box;
+		width: min(100%, calc(var(--container-size) * 0.16));
+		aspect-ratio: 1;
+		border-radius: 0.5rem;
+		object-fit: contain;
+		background: hsl(0 0% 100% / 0.72);
 	}
 
 	@container body (width >= 40rem) {

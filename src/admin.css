@@ -302,6 +302,32 @@ body {
 	color: #4ade80;
 }
 
+.admin-segmented {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	margin-top: 2px;
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+.admin-segmented label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border: 1px solid #2a2a2a;
+	border-radius: 999px;
+	background: #141414;
+	color: #aaa;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.admin-segmented input {
+	margin: 0;
+}
+
 /* ─── Filters ────────────────────────────────────────────────────────────── */
 
 .admin-filters {
@@ -621,6 +647,27 @@ body {
 	color: #888;
 }
 
+.admin-option-image {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1.4;
+	min-width: 220px;
+}
+
+.admin-option-image img {
+	width: 52px;
+	height: 52px;
+	object-fit: contain;
+	border-radius: 7px;
+	border: 1px solid #2a2a2a;
+	background: #0f0f0f;
+}
+
+.admin-option-image input[type="file"] {
+	display: none;
+}
+
 /* ─── Color picker ───────────────────────────────────────────────────────── */
 
 .admin-color-picker {
@@ -773,6 +820,39 @@ body {
 	background: #14532d33;
 	border-color: #16a34a;
 	color: #4ade80;
+}
+
+.admin-import-image-toggle {
+	align-self: flex-start;
+}
+
+.admin-import-option-image {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1.4;
+	min-width: 220px;
+	color: #777;
+	font-size: 12px;
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+.admin-import-option-image img {
+	width: 52px;
+	height: 52px;
+	object-fit: contain;
+	border-radius: 7px;
+	border: 1px solid #2a2a2a;
+	background: #0f0f0f;
+}
+
+.admin-import-option-image small {
+	color: #fbbf24;
+}
+
+.admin-import-option-image input[type="file"] {
+	display: none;
 }
 
 .admin-import-saved-summary {

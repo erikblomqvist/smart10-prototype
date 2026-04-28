@@ -21,6 +21,7 @@
 	let items = $state(/** @type {ImportItem[]} */ ([]));
 
 	const typeOptions = Object.entries(QUESTION_TYPES);
+	const OPTION_IMAGE_BUCKET = 'question-option-images';
 
 	/**
 	 * @typedef {{
@@ -29,6 +30,8 @@
 	 *   previewUrl: string,
 	 *   status: 'queued'|'extracting'|'ready'|'error'|'saved',
 	 *   draft: ReturnType<typeof normalizeImportDraft>,
+	 *   optionImages: { dataUrl: string, width: number, height: number, warnings: string[] }[],
+	 *   useOptionImages: boolean,
 	 *   errors: string[],
 	 *   extractionError: string,
 	 *   collapsed: boolean
@@ -62,6 +65,8 @@
 			previewUrl: URL.createObjectURL(file),
 			status: /** @type {ImportItem['status']} */ ('queued'),
 			draft: createEmptyImportDraft(),
+			optionImages: [],
+			useOptionImages: false,
 			errors: [],
 			extractionError: '',
 			collapsed: false,
@@ -88,11 +93,18 @@
 			if (!response.ok) throw new Error(data?.error ?? 'Extraction failed.');
 
 			const draft = normalizeImportDraft(data);
+			const optionImages = normalizeOptionImages(data?.option_images);
+			const useOptionImages = false;
 			updateItem(id, (item) => ({
 				...item,
 				status: 'ready',
 				draft,
-				errors: validateImportDraft(draft),
+				optionImages,
+				useOptionImages,
+				errors: [
+					...validateImportDraft(draft),
+					...validateImportItem(draft, optionImages, useOptionImages),
+				],
 				extractionError: '',
 			}));
 		} catch (/** @type {any} */ err) {
@@ -121,7 +133,14 @@
 			const draft = structuredClone(item.draft);
 			updater(draft);
 			const normalized = normalizeImportDraft(draft);
-			return { ...item, draft: normalized, errors: validateImportDraft(normalized) };
+			return {
+				...item,
+				draft: normalized,
+				errors: [
+					...validateImportDraft(normalized),
+					...validateImportItem(normalized, item.optionImages, item.useOptionImages),
+				],
+			};
 		});
 	}
 
@@ -164,6 +183,55 @@
 		});
 	}
 
+	/**
+	 * @param {string} id
+	 * @param {boolean} useOptionImages
+	 */
+	function setUseOptionImages(id, useOptionImages) {
+		updateItem(id, (item) => ({
+			...item,
+			useOptionImages,
+			errors: [
+				...validateImportDraft(item.draft),
+				...validateImportItem(item.draft, item.optionImages, useOptionImages),
+			],
+		}));
+	}
+
+	/**
+	 * @param {string} id
+	 * @param {number} index
+	 * @param {Event} event
+	 */
+	async function replaceImportedOptionImage(id, index, event) {
+		const input = /** @type {HTMLInputElement} */ (event.currentTarget);
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+
+		try {
+			const dataUrl = await resizeOptionCropImage(file);
+			updateItem(id, (item) => {
+				const optionImages = item.optionImages.map((image, imageIndex) =>
+					imageIndex === index
+						? { dataUrl, width: 0, height: 0, warnings: [] }
+						: image,
+				);
+				return {
+					...item,
+					optionImages,
+					useOptionImages: true,
+					errors: [
+						...validateImportDraft(item.draft),
+						...validateImportItem(item.draft, optionImages, true),
+					],
+				};
+			});
+		} catch (/** @type {any} */ err) {
+			error = err.message ?? 'Could not replace option image.';
+		}
+	}
+
 	/** @param {string} id */
 	function removeItem(id) {
 		const item = items.find((candidate) => candidate.id === id);
@@ -189,14 +257,18 @@
 			return;
 		}
 		const errors = validateImportDraft(item.draft);
-		if (errors.length > 0) {
-			updateItem(item.id, (current) => ({ ...current, errors }));
+		const itemErrors = validateImportItem(item.draft, item.optionImages, item.useOptionImages);
+		if (errors.length > 0 || itemErrors.length > 0) {
+			updateItem(item.id, (current) => ({ ...current, errors: [...errors, ...itemErrors] }));
 			return;
 		}
 
 		saving = true;
 		try {
 			const payload = toQuestionInsertPayload(item.draft, deckId);
+			if (item.useOptionImages) {
+				payload.answer_media_json = await uploadImportedOptionImages(item);
+			}
 			const { error: err } = await supabase.from('questions').insert(payload);
 			if (err) throw err;
 			updateItem(item.id, (current) => ({ ...current, status: 'saved', errors: [], collapsed: true }));
@@ -205,6 +277,49 @@
 		} finally {
 			saving = false;
 		}
+	}
+
+	/**
+	 * @param {ReturnType<typeof normalizeImportDraft>} draft
+	 * @param {{ dataUrl: string }[]} optionImages
+	 * @param {boolean} useOptionImages
+	 */
+	function validateImportItem(draft, optionImages, useOptionImages) {
+		if (!useOptionImages) return [];
+		if (optionImages.length !== 10 || optionImages.some((image) => !image.dataUrl)) {
+			return ['All 10 option image crops are required, or turn off image options for this import.'];
+		}
+		if (draft.options_json.some((option) => !String(option).trim())) {
+			return ['Image options still need text labels for accessibility.'];
+		}
+		return [];
+	}
+
+	/** @param {ImportItem} item */
+	async function uploadImportedOptionImages(item) {
+		if (!supabase) throw new Error('Supabase is not configured.');
+		const groupId = crypto.randomUUID();
+		return Promise.all(
+			item.optionImages.map(async (image, index) => {
+				const response = await fetch(image.dataUrl);
+				const blob = await response.blob();
+				const path = `imports/${groupId}/options/${index + 1}.webp`;
+				const { error: uploadError } = await supabase.storage
+					.from(OPTION_IMAGE_BUCKET)
+					.upload(path, blob, {
+						cacheControl: '31536000',
+						contentType: 'image/webp',
+						upsert: true,
+					});
+				if (uploadError) throw uploadError;
+				const { data } = supabase.storage.from(OPTION_IMAGE_BUCKET).getPublicUrl(path);
+				return {
+					option_image_url: data.publicUrl,
+					option_image_path: path,
+					option_image_alt: item.draft.options_json[index] ?? '',
+				};
+			}),
+		);
 	}
 
 	async function saveAllReady() {
@@ -254,12 +369,70 @@
 	}
 
 	/** @param {File} file */
+	function resizeOptionCropImage(file) {
+		return new Promise((resolve, reject) => {
+			const url = URL.createObjectURL(file);
+			const image = new Image();
+			image.onload = () => {
+				const maxSize = 512;
+				const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+				const canvas = document.createElement('canvas');
+				canvas.width = Math.max(1, Math.round(image.width * scale));
+				canvas.height = Math.max(1, Math.round(image.height * scale));
+				const context = canvas.getContext('2d');
+				if (!context) {
+					URL.revokeObjectURL(url);
+					reject(new Error('Could not prepare replacement crop.'));
+					return;
+				}
+				context.drawImage(image, 0, 0, canvas.width, canvas.height);
+				canvas.toBlob(
+					(blob) => {
+						URL.revokeObjectURL(url);
+						if (!blob) {
+							reject(new Error('Could not compress replacement crop.'));
+							return;
+						}
+						const reader = new FileReader();
+						reader.onload = () => resolve(String(reader.result));
+						reader.onerror = () => reject(reader.error);
+						reader.readAsDataURL(blob);
+					},
+					'image/webp',
+					0.78,
+				);
+			};
+			image.onerror = () => {
+				URL.revokeObjectURL(url);
+				reject(new Error('Could not read replacement image.'));
+			};
+			image.src = url;
+		});
+	}
+
+	/** @param {File} file */
 	function fileToDataUrl(file) {
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader();
 			reader.onload = () => resolve(String(reader.result));
 			reader.onerror = () => reject(reader.error);
 			reader.readAsDataURL(file);
+		});
+	}
+
+	/** @param {unknown} value */
+	function normalizeOptionImages(value) {
+		const array = Array.isArray(value) ? value : [];
+		return Array.from({ length: 10 }, (_, index) => {
+			const image = array[index] && typeof array[index] === 'object'
+				? /** @type {Record<string, any>} */ (array[index])
+				: {};
+			return {
+				dataUrl: typeof image.dataUrl === 'string' ? image.dataUrl : '',
+				width: Number(image.width) || 0,
+				height: Number(image.height) || 0,
+				warnings: Array.isArray(image.warnings) ? image.warnings.map(String).filter(Boolean) : [],
+			};
 		});
 	}
 
@@ -380,6 +553,20 @@
 										<span class={confidenceClass(item.draft.confidence.correct_answers)}>Answers {confidencePercent(item.draft.confidence.correct_answers)}</span>
 									</div>
 
+									{#if item.optionImages.length > 0}
+										<label class="admin-toggle-wrap admin-import-image-toggle">
+											<input
+												type="checkbox"
+												checked={item.useOptionImages}
+												onchange={(event) => setUseOptionImages(item.id, /** @type {HTMLInputElement} */ (event.currentTarget).checked)}
+												disabled={item.status === 'saved' || saving}
+											/>
+											<span class="admin-toggle" class:admin-toggle--on={item.useOptionImages}>
+												{item.useOptionImages ? 'Using image options' : 'Use text options'}
+											</span>
+										</label>
+									{/if}
+
 									{#if item.draft.warnings.length > 0}
 										<ul class="admin-import-warnings">
 											{#each item.draft.warnings as warning}
@@ -395,6 +582,28 @@
 												<div class="admin-option-row">
 													<span class="admin-option-num">{i + 1}</span>
 													<input class="admin-input admin-option-label" type="text" value={option} placeholder="Option {i + 1}" oninput={(event) => updateDraft(item.id, (draft) => { draft.options_json[i] = /** @type {HTMLInputElement} */ (event.currentTarget).value; })} disabled={item.status === 'saved' || saving} />
+
+													{#if item.useOptionImages && item.optionImages[i]}
+														<div class="admin-import-option-image">
+															{#if item.optionImages[i].dataUrl}
+																<img src={item.optionImages[i].dataUrl} alt={option || `Option ${i + 1}`} />
+															{:else}
+																<span>No crop</span>
+															{/if}
+															{#if item.optionImages[i].warnings.length > 0}
+																<small>{item.optionImages[i].warnings.join(', ')}</small>
+															{/if}
+															<label class="admin-btn admin-btn--sm">
+																Replace
+																<input
+																	type="file"
+																	accept="image/*"
+																	onchange={(event) => replaceImportedOptionImage(item.id, i, event)}
+																	disabled={item.status === 'saved' || saving}
+																/>
+															</label>
+														</div>
+													{/if}
 
 													{#if item.draft.type === 'boolean'}
 														<label class="admin-toggle-wrap">

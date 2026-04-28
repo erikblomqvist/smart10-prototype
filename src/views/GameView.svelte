@@ -561,6 +561,7 @@
 				questionText={question.text}
 				answers={question.options}
 				correctAnswers={question.correctAnswers}
+				answerMedia={question.answerMedia}
 				blobs={blobStates}
 				seatRotation={interactiveWheelSeatRotation}
 				rotationDurationMs={wheelRotationDurationMs}
@@ -611,6 +612,7 @@
 				questionText={question.text}
 				answers={question.options}
 				correctAnswers={question.correctAnswers}
+				answerMedia={question.answerMedia}
 				blobs={reviewBlobStates}
 				seatRotation={reviewSeatRotation}
 			/>

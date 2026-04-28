@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 const QUESTION_TYPES = [
 	'standard',
 	'boolean',
@@ -6,6 +8,19 @@ const QUESTION_TYPES = [
 	'colors',
 	'numbers',
 	'centuryDecade',
+];
+
+const OPTION_IMAGE_LAYOUT = [
+	[0.472, 0.265],
+	[0.607, 0.329],
+	[0.691, 0.415],
+	[0.69, 0.555],
+	[0.606, 0.635],
+	[0.474, 0.694],
+	[0.332, 0.663],
+	[0.272, 0.551],
+	[0.262, 0.433],
+	[0.341, 0.312],
 ];
 
 const schema = {
@@ -113,12 +128,100 @@ export default async function handler(request, response) {
 			return;
 		}
 
-		const draft = await extractCard(apiKey, image);
-		response.status(200).json(draft);
+		const [draft, optionImages] = await Promise.all([
+			extractCard(apiKey, image),
+			extractOptionImages(image).catch((error) =>
+				createFailedOptionImages(
+					error instanceof Error
+						? error.message
+						: 'Could not extract option images.',
+				),
+			),
+		]);
+		response.status(200).json({ ...draft, option_images: optionImages });
 	} catch (error) {
 		console.error(error);
 		response.status(500).json({ error: error instanceof Error ? error.message : 'Failed to extract card.' });
 	}
+}
+
+/**
+ * @param {string} image
+ */
+export async function extractOptionImages(image) {
+	const { data } = parseDataUrl(image);
+	const source = Buffer.from(data, 'base64');
+	const rotated = await sharp(source).rotate().toBuffer();
+	const metadata = await sharp(rotated).metadata();
+	const width = metadata.width ?? 0;
+	const height = metadata.height ?? 0;
+	if (!width || !height) {
+		return createFailedOptionImages('Could not read image dimensions.');
+	}
+
+	const size = Math.min(width, height);
+	const cropWidth = Math.round(size * 0.15);
+	const cropHeight = Math.round(size * 0.11);
+
+	return Promise.all(
+		Array.from({ length: 10 }, async (_, index) => {
+			const [xRatio, yRatio] = OPTION_IMAGE_LAYOUT[index];
+			const left = clamp(Math.round(width * xRatio - cropWidth / 2), 0, Math.max(0, width - cropWidth));
+			const top = clamp(Math.round(height * yRatio - cropHeight / 2), 0, Math.max(0, height - cropHeight));
+
+			try {
+				const buffer = await sharp(rotated)
+					.extract({ left, top, width: cropWidth, height: cropHeight })
+					.resize({
+						width: 384,
+						height: 256,
+						fit: 'inside',
+						withoutEnlargement: true,
+					})
+					.normalize()
+					.flatten({ background: '#ffffff' })
+					.webp({ quality: 78, effort: 4 })
+					.toBuffer();
+				const out = await sharp(buffer).metadata();
+				return {
+					dataUrl: `data:image/webp;base64,${buffer.toString('base64')}`,
+					width: out.width ?? 0,
+					height: out.height ?? 0,
+					warnings: [],
+				};
+			} catch (error) {
+				return {
+					dataUrl: '',
+					width: 0,
+					height: 0,
+					warnings: [
+						error instanceof Error
+							? error.message
+							: `Could not crop option ${index + 1}.`,
+					],
+				};
+			}
+		}),
+	);
+}
+
+/** @param {string} message */
+function createFailedOptionImages(message) {
+	return Array.from({ length: 10 }, () => ({
+		dataUrl: '',
+		width: 0,
+		height: 0,
+		warnings: [message],
+	}));
+}
+
+/**
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ */
+function clamp(value, min, max) {
+	return Math.max(min, Math.min(max, value));
 }
 
 /**
