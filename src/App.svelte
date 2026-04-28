@@ -1,18 +1,28 @@
 <script>
+	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import HomeView from './components/HomeView.svelte';
 	import SetupView from './views/SetupView.svelte';
 	import GameView from './views/GameView.svelte';
 	import PreviousGamesView from './views/PreviousGamesView.svelte';
+	import DemoView from './views/DemoView.svelte';
 	import { initGame, loadGame } from './lib/game.svelte.js';
 
-	/** @type {'landing'|'setup'|'game'|'previousGames'} */
-	let view = $state('landing');
+	/** @typedef {'landing'|'setup'|'game'|'previousGames'|'demo'} AppView */
+
+	/** @returns {AppView} */
+	function getInitialView() {
+		return window.location.pathname === '/demo' ? 'demo' : 'landing';
+	}
+
+	/** @type {AppView} */
+	let view = $state(getInitialView());
 	let loading = $state(false);
 	/** @type {string|null} */
 	let loadError = $state(null);
 
-	function navigate(/** @type {'landing'|'setup'|'game'|'previousGames'} */ newView) {
+	/** @param {AppView} newView */
+	function navigate(newView) {
 		if (document.startViewTransition) {
 			document.startViewTransition(() => {
 				view = newView;
@@ -20,7 +30,21 @@
 		} else {
 			view = newView;
 		}
+
+		const nextPath = newView === 'demo' ? '/demo' : '/';
+		if (window.location.pathname !== nextPath) {
+			window.history.pushState({}, '', nextPath);
+		}
 	}
+
+	onMount(() => {
+		function handlePopState() {
+			view = getInitialView();
+		}
+
+		window.addEventListener('popstate', handlePopState);
+		return () => window.removeEventListener('popstate', handlePopState);
+	});
 
 	/** @param {import('./views/SetupView.svelte').GameSetup} setup */
 	async function handleSetupComplete(setup) {
@@ -74,4 +98,6 @@
 	</main>
 {:else if view === 'game'}
 	<GameView onstartover={() => navigate('landing')} />
+{:else if view === 'demo'}
+	<DemoView onback={() => navigate('landing')} />
 {/if}

@@ -234,6 +234,65 @@ export function canUndoLastMove() {
 // --- Exported mutations ---
 
 /**
+ * @typedef {{
+ *   status: 'playing'|'round_review'|'finished',
+ *   code?: string|null,
+ *   winScore?: number,
+ *   players: GamePlayer[],
+ *   currentPlayerId: string|null,
+ *   startingTurnOrderIndex?: number,
+ *   selectedDeckIds?: string[],
+ *   usedQuestionIds?: string[],
+ *   currentRound: Round|null,
+ * }} DemoGameSnapshot
+ */
+
+/** @template T @param {T} value @returns {T} */
+function cloneJson(value) {
+	return JSON.parse(JSON.stringify(value));
+}
+
+/** @param {DemoGameSnapshot} snapshot */
+export function loadDemoGame(snapshot) {
+	const demoGame = cloneJson(snapshot);
+	const demoQuestion = demoGame.currentRound?.question ?? null;
+
+	game.status = demoGame.status;
+	game.code = demoGame.code ?? 'DEMO';
+	game.dbGameId = null;
+	game.winScore = demoGame.winScore ?? 50;
+	game.players = demoGame.players.map((player) => ({
+		...player,
+		dbId: null,
+	}));
+	game.currentPlayerId = demoGame.currentPlayerId;
+	game.startingTurnOrderIndex = demoGame.startingTurnOrderIndex ?? 0;
+	game.selectedDeckIds = demoGame.selectedDeckIds ?? [];
+	game.usedQuestionIds =
+		demoGame.usedQuestionIds ?? (demoQuestion ? [demoQuestion.id] : []);
+	game.currentRound = demoGame.currentRound
+		? {
+				...demoGame.currentRound,
+				answeredBlobs: [...demoGame.currentRound.answeredBlobs],
+				blobResults: { ...demoGame.currentRound.blobResults },
+				dbId: null,
+				lastAnswerMove: demoGame.currentRound.lastAnswerMove
+					? { ...demoGame.currentRound.lastAnswerMove, answerId: null }
+					: null,
+			}
+		: null;
+
+	questionPool = demoQuestion
+		? [
+				demoQuestion,
+				...MOCK_QUESTIONS.filter((question) => question.id !== demoQuestion.id),
+			]
+		: MOCK_QUESTIONS;
+
+	lockPortraitOnPhone();
+}
+
+/**
  * @param {{ players: import('../views/SetupView.svelte').SetupPlayer[], selectedDeckIds: string[], startingPlayerIndex: number }} setup
  */
 export async function initGame(setup) {
