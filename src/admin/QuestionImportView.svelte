@@ -27,6 +27,7 @@
 	 * @typedef {{
 	 *   id: string,
 	 *   fileName: string,
+	 *   file: File,
 	 *   previewUrl: string,
 	 *   status: 'queued'|'extracting'|'ready'|'error'|'saved',
 	 *   draft: ReturnType<typeof normalizeImportDraft>,
@@ -62,6 +63,7 @@
 		const newItems = files.map((file, index) => ({
 			id: `${Date.now()}-${index}-${file.name}`,
 			fileName: file.name,
+			file,
 			previewUrl: URL.createObjectURL(file),
 			status: /** @type {ImportItem['status']} */ ('queued'),
 			draft: createEmptyImportDraft(),
@@ -74,6 +76,13 @@
 
 		items = [...newItems, ...items];
 		await Promise.all(newItems.map((item, index) => extractFile(item.id, files[index])));
+	}
+
+	/** @param {string} id */
+	async function retryExtraction(id) {
+		const item = items.find((candidate) => candidate.id === id);
+		if (!item) return;
+		await extractFile(item.id, item.file);
 	}
 
 	/**
@@ -510,6 +519,7 @@
 								{:else if item.status === 'error'}
 									<p class="admin-form-error">{item.extractionError}</p>
 									<div class="admin-form-actions">
+										<button class="admin-btn" type="button" onclick={() => retryExtraction(item.id)}>Try again</button>
 										<button class="admin-btn admin-btn--danger" type="button" onclick={() => removeItem(item.id)}>Discard</button>
 									</div>
 								{:else if item.status === 'saved' && item.collapsed}
