@@ -252,6 +252,21 @@
 		return `questions/${questionKey}/options/${index + 1}-${Date.now()}.webp`;
 	}
 
+	/** Swap slot `a` with `b` so labels, answers, colors, and media move together. */
+	function swapOptionSlots(/** @type {number} */ a, /** @type {number} */ b) {
+		if (a === b || a < 0 || b < 0 || a >= NUM_BLOBS || b >= NUM_BLOBS) return;
+		const swap = (/** @type {any[]} */ arr) => {
+			const next = [...arr];
+			[next[a], next[b]] = [next[b], next[a]];
+			return next;
+		};
+		options = swap(options);
+		correctAnswers = swap(correctAnswers);
+		colorHsl = swap(colorHsl);
+		media = swap(media);
+		imageUploading = swap(imageUploading);
+	}
+
 	/** @param {File|Blob} file */
 	function resizeOptionImage(file) {
 		return new Promise((resolve, reject) => {
@@ -357,6 +372,26 @@
 					{#each options as _, i}
 						<div class="admin-option-row">
 							<span class="admin-option-num">{i + 1}</span>
+							<div class="admin-option-reorder">
+								<button
+									class="admin-btn admin-btn--sm admin-option-move"
+									type="button"
+									disabled={saving || i === 0}
+									aria-label="Move option up"
+									onclick={() => swapOptionSlots(i, i - 1)}
+								>
+									↑
+								</button>
+								<button
+									class="admin-btn admin-btn--sm admin-option-move"
+									type="button"
+									disabled={saving || i === NUM_BLOBS - 1}
+									aria-label="Move option down"
+									onclick={() => swapOptionSlots(i, i + 1)}
+								>
+									↓
+								</button>
+							</div>
 
 							<!-- Option label -->
 							<input

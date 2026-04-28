@@ -643,6 +643,20 @@ body {
 	flex-shrink: 0;
 }
 
+.admin-option-reorder {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+.admin-option-move {
+	min-width: 0;
+	padding: 2px 6px;
+	line-height: 1;
+	font-size: 12px;
+}
+
 .admin-option-label {
 	flex: 2;
 	min-width: 120px;
