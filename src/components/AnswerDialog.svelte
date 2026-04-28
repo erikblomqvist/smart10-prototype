@@ -8,7 +8,7 @@
 	 *   blobLabel: string,
 	 *   correctAnswer: import('../data/game.js').CorrectAnswer | null,
 	 *   questionType: import('../data/questionTypes.js').QuestionType,
-	 *   seatRotation?: number,
+	 *   seatRotation?: number, // turns
 	 *   rotationDurationMs?: number,
 	 *   rotationEasing?: string,
 	 *   onresult: (isCorrect: boolean) => void,
@@ -52,7 +52,7 @@
 	class="answer-dialog"
 	class:answer-dialog--boolean={isBoolean}
 	class:answer-dialog--color={isColor}
-	style={`${colorStyle};--seat-rotation:${seatRotation};--rotation-duration-ms:${rotationDurationMs};--rotation-easing:${rotationEasing}`}
+	style={`${colorStyle};--seat-rotation:${seatRotation}turn;--rotation-duration-ms:${rotationDurationMs};--rotation-easing:${rotationEasing}`}
 	onkeydown={(e) => e.key === 'Escape' && e.preventDefault()}
 	onclick={(e) => e.stopPropagation()}
 >
@@ -111,7 +111,7 @@
 		color: var(--grayscale-900);
 		box-shadow: 0 1rem 3rem hsl(0 0% 0% / 0.35);
 		text-align: center;
-		transform: rotate(calc(var(--seat-rotation, 0) * 1deg));
+		transform: rotate(var(--seat-rotation, 0turn));
 		transition: transform calc(var(--rotation-duration-ms, 500) * 1ms)
 			var(--rotation-easing, cubic-bezier(0.34, 1.56, 0.64, 1));
 	}

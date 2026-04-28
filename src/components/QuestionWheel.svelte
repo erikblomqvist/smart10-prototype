@@ -11,7 +11,7 @@
 	 *   correctAnswers: (boolean|string|number|{ text: string, backgroundColor: string })[],
 	 *   answerMedia?: Record<string, any>[],
 	 *   blobs?: (boolean|null)[],
-	 *   seatRotation?: number,
+	 *   seatRotation?: number, // turns
 	 *   rotationDurationMs?: number,
 	 *   rotationEasing?: string,
 	 *   streakLevel?: number,
@@ -84,7 +84,7 @@
 <div
 	class="container"
 	class:container--streak={streakIsActive}
-	style="--seat-rotation:{seatRotation};--rotation-duration-ms:{rotationDurationMs};--rotation-easing:{rotationEasing};--streak-color:{streakColor};--streak-intensity:{streakIntensity};--streak-ring-width:{streakRingWidth};--streak-spark-width:{streakSparkWidth};--streak-glow-opacity:{streakGlowOpacity};--streak-inner-glow-opacity:{streakInnerGlowOpacity};--streak-spark-opacity:{streakSparkOpacity};--streak-outer-blur:{streakOuterBlur};--streak-glow-blur:{streakGlowBlur};--streak-inset-glow-blur:{streakInsetGlowBlur}"
+	style="--seat-rotation:{seatRotation}turn;--rotation-duration-ms:{rotationDurationMs};--rotation-easing:{rotationEasing};--streak-color:{streakColor};--streak-intensity:{streakIntensity};--streak-ring-width:{streakRingWidth};--streak-spark-width:{streakSparkWidth};--streak-glow-opacity:{streakGlowOpacity};--streak-inner-glow-opacity:{streakInnerGlowOpacity};--streak-spark-opacity:{streakSparkOpacity};--streak-outer-blur:{streakOuterBlur};--streak-glow-blur:{streakGlowBlur};--streak-inset-glow-blur:{streakInsetGlowBlur}"
 >
 	{#if streakIsActive}
 		<svg class="electric-filter-svg" aria-hidden="true" focusable="false">
@@ -218,7 +218,7 @@
 		width: var(--container-size);
 		height: var(--container-size);
 		background-color: hsl(0, 0%, 100%);
-		transform: rotate(calc(var(--seat-rotation, 0) * 1deg));
+		transform: rotate(var(--seat-rotation, 0turn));
 		transition: transform calc(var(--rotation-duration-ms, 500) * 1ms)
 			var(--rotation-easing, cubic-bezier(0.34, 1.56, 0.64, 1));
 	}
