@@ -4,6 +4,7 @@
 	import {
 		game,
 		revealBlob,
+		advanceCurrentPlayer,
 		passCurrentPlayer,
 		endRound,
 		startNextRound,
@@ -90,6 +91,8 @@
 	const SPRING_DRAG_MAX_ROTATION = 120;
 	const SPRING_DRAG_ROTATION_PER_PX = 0.18;
 	const SPRING_DRAG_RETURN_DURATION_MS = 500;
+	const STREAK_THRESHOLD = 3;
+	const STREAK_CELEBRATION_MS = 1000;
 	const SPRING_DRAG_IGNORE_SELECTOR =
 		'button, a, input, select, textarea, [role="button"], [popover], [data-game-scroll-lock-allow]';
 	let introSeatRotation = $state(/** @type {number|null} */ (null));
@@ -99,9 +102,17 @@
 	let springDragStartY = 0;
 	let springDragRotationOffset = $state(0);
 	let springDragIsActive = $state(false);
+	let streakCelebrationPlayerId = $state(/** @type {string|null} */ (null));
+	let streakBurstKey = $state(0);
+	let streakCelebrationTimerId = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
 	const wheelSeatRotation = $derived(introSeatRotation ?? seatRotation);
 	const interactiveWheelSeatRotation = $derived(
 		wheelSeatRotation + springDragRotationOffset,
+	);
+	const streakCelebrationActive = $derived(streakCelebrationPlayerId !== null);
+	const wheelStreakLevel = $derived(currentPlayer?.roundScore ?? 0);
+	const wheelStreakColor = $derived(
+		currentPlayer ? `var(--${currentPlayer.color})` : 'var(--orange-700)',
 	);
 	const wheelRotationDurationMs = $derived(
 		springDragIsActive
@@ -258,6 +269,32 @@
 		springDragRotationOffset = 0;
 	}
 
+	function clearStreakCelebration() {
+		if (streakCelebrationTimerId !== null) {
+			clearTimeout(streakCelebrationTimerId);
+			streakCelebrationTimerId = null;
+		}
+
+		streakCelebrationPlayerId = null;
+	}
+
+	function startStreakCelebration(
+		/** @type {NonNullable<ReturnType<typeof revealBlob>>} */ result,
+	) {
+		clearStreakCelebration();
+		streakCelebrationPlayerId = result.playerId;
+		streakBurstKey += 1;
+
+		streakCelebrationTimerId = setTimeout(() => {
+			streakCelebrationTimerId = null;
+			streakCelebrationPlayerId = null;
+
+			if (result.nextPlayerId) {
+				advanceCurrentPlayer(result.playerId);
+			}
+		}, STREAK_CELEBRATION_MS);
+	}
+
 	function hasOpenPopover() {
 		try {
 			return document.querySelector('[popover]:popover-open') !== null;
@@ -280,6 +317,7 @@
 			game.status === 'playing' &&
 			question !== null &&
 			introSeatRotation === null &&
+			!streakCelebrationActive &&
 			!dialogOpen &&
 			!undoDialogOpen &&
 			!hasOpenPopover() &&
@@ -412,6 +450,7 @@
 
 			setGameInteractionLock(false);
 			resetIntroRotation();
+			clearStreakCelebration();
 			document.removeEventListener('touchstart', handleLockedTouchStart);
 			document.removeEventListener('touchmove', handleLockedTouchMove);
 			document.removeEventListener('touchend', handleLockedTouchEnd);
@@ -434,6 +473,7 @@
 			game.status !== 'playing' ||
 			dialogOpen ||
 			undoDialogOpen ||
+			streakCelebrationActive ||
 			introSeatRotation !== null
 		) {
 			resetSpringDrag();
@@ -484,11 +524,13 @@
 	);
 
 	function handleBlobClick(/** @type {number} */ blobIndex) {
+		if (streakCelebrationActive) return;
 		pendingBlobIndex = blobIndex;
 		dialogOpen = true;
 	}
 
 	function handleUndoBlobClick(/** @type {number} */ blobIndex) {
+		if (streakCelebrationActive) return;
 		if (blobIndex !== undoableBlobIndex) return;
 		undoDialogOpen = true;
 	}
@@ -496,22 +538,42 @@
 	function handleDialogResult(/** @type {boolean} */ isCorrect) {
 		dialogOpen = false;
 		if (pendingBlobIndex !== null) {
-			revealBlob(pendingBlobIndex, isCorrect);
+			const shouldDeferAdvance =
+				isCorrect && currentPlayer?.roundScore === STREAK_THRESHOLD - 1;
+			const result = revealBlob(pendingBlobIndex, isCorrect, {
+				deferAdvance: shouldDeferAdvance,
+			});
+
+			if (
+				result?.isCorrect &&
+				result.previousRoundScore === STREAK_THRESHOLD - 1 &&
+				result.newRoundScore === STREAK_THRESHOLD
+			) {
+				startStreakCelebration(result);
+			}
+
 			pendingBlobIndex = null;
 		}
 	}
 
 	function handleUndoDialogConfirm() {
+		if (streakCelebrationActive) return;
 		undoDialogOpen = false;
 		undoLastMove();
 	}
 
 	function handlePassOrEnd() {
+		if (streakCelebrationActive) return;
 		if (roundIsOver) {
 			endRound();
 		} else {
 			passCurrentPlayer();
 		}
+	}
+
+	function handleUndo() {
+		if (streakCelebrationActive) return;
+		undoLastMove();
 	}
 
 	function handleSave() {
@@ -545,8 +607,8 @@
 			players={game.players}
 			onstartover={handleStartOver}
 			onsave={handleSave}
-			onundo={undoLastMove}
-			canundo={undoIsAvailable}
+			onundo={handleUndo}
+			canundo={undoIsAvailable && !streakCelebrationActive}
 		/>
 
 		{#if question}
@@ -566,9 +628,12 @@
 				seatRotation={interactiveWheelSeatRotation}
 				rotationDurationMs={wheelRotationDurationMs}
 				rotationEasing={wheelRotationEasing}
+				streakLevel={wheelStreakLevel}
+				streakColor={wheelStreakColor}
+				{streakBurstKey}
 				{undoableBlobIndex}
-				onblobclick={handleBlobClick}
-				onundoblobclick={handleUndoBlobClick}
+				onblobclick={streakCelebrationActive ? undefined : handleBlobClick}
+				onundoblobclick={streakCelebrationActive ? undefined : handleUndoBlobClick}
 			/>
 		{/if}
 
@@ -577,6 +642,7 @@
 				class="game-action__btn"
 				class:game-action__btn--end-round={roundIsOver}
 				type="button"
+				disabled={streakCelebrationActive}
 				onclick={handlePassOrEnd}
 			>
 				{roundIsOver ? $_('game.end_round') : $_('game.pass')}
@@ -662,6 +728,11 @@
 
 	.game-action__btn:hover {
 		background-color: var(--grayscale-700);
+	}
+
+	.game-action__btn:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 
 	.game-action__btn--end-round {

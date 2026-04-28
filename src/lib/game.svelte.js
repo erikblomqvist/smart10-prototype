@@ -45,6 +45,15 @@
  *   dbId: string|null,
  *   lastAnswerMove: LastAnswerMove|null,
  * }} Round
+ *
+ * @typedef {{
+ *   playerId: string,
+ *   previousRoundScore: number,
+ *   newRoundScore: number,
+ *   isCorrect: boolean,
+ *   nextPlayerId: string|null,
+ *   roundIsOver: boolean,
+ * }} RevealBlobResult
  */
 
 import { supabase } from './supabase.js';
@@ -421,21 +430,25 @@ export async function initGame(setup) {
 /**
  * @param {number} blobIndex
  * @param {boolean} isCorrect
+ * @param {{ deferAdvance?: boolean }} [options]
+ * @returns {RevealBlobResult|null}
  */
-export function revealBlob(blobIndex, isCorrect) {
-	if (!game.currentRound) return;
+export function revealBlob(blobIndex, isCorrect, options = {}) {
+	if (!game.currentRound) return null;
 
 	const playerIdx = game.players.findIndex((p) => p.id === game.currentPlayerId);
-	if (playerIdx === -1) return;
+	if (playerIdx === -1) return null;
 
 	const actingPlayerDbId = game.players[playerIdx].dbId;
 	const round = game.currentRound;
+	const actingPlayerId = game.currentPlayerId;
+	const previousRoundScore = game.players[playerIdx].roundScore;
 	const lastAnswerMove = {
 		blobIndex,
-		playerId: game.currentPlayerId,
-		previousRoundScore: game.players[playerIdx].roundScore,
+		playerId: actingPlayerId,
+		previousRoundScore,
 		previousStatus: game.players[playerIdx].status,
-		previousCurrentPlayerId: game.currentPlayerId,
+		previousCurrentPlayerId: actingPlayerId,
 		previousLastPlayerId: round.lastPlayerId,
 		answerId: /** @type {string|null} */ (null),
 		deleteWhenPersisted: false,
@@ -444,7 +457,7 @@ export function revealBlob(blobIndex, isCorrect) {
 	round.lastAnswerMove = lastAnswerMove;
 	round.answeredBlobs.push(blobIndex);
 	round.blobResults[blobIndex] = isCorrect;
-	round.lastPlayerId = game.currentPlayerId;
+	round.lastPlayerId = actingPlayerId;
 
 	if (isCorrect) {
 		game.players[playerIdx].roundScore += 1;
@@ -453,10 +466,12 @@ export function revealBlob(blobIndex, isCorrect) {
 		game.players[playerIdx].status = 'out';
 	}
 
-	if (!checkRoundOver()) {
-		const nextId = getNextActivePlayerId(game.players, game.currentPlayerId);
-		if (nextId) game.currentPlayerId = nextId;
-	}
+	const roundIsOver = checkRoundOver();
+	const nextPlayerId = roundIsOver
+		? null
+		: getNextActivePlayerId(game.players, actingPlayerId);
+
+	if (nextPlayerId && !options.deferAdvance) game.currentPlayerId = nextPlayerId;
 
 	if (supabase && round.dbId && actingPlayerDbId) {
 		supabase
@@ -478,6 +493,31 @@ export function revealBlob(blobIndex, isCorrect) {
 			})
 			.catch(console.error);
 	}
+
+	return {
+		playerId: actingPlayerId,
+		previousRoundScore,
+		newRoundScore: game.players[playerIdx].roundScore,
+		isCorrect,
+		nextPlayerId,
+		roundIsOver,
+	};
+}
+
+/**
+ * @param {string|null} expectedCurrentPlayerId
+ * @returns {boolean}
+ */
+export function advanceCurrentPlayer(expectedCurrentPlayerId = game.currentPlayerId) {
+	if (game.status !== 'playing' || checkRoundOver()) return false;
+	if (game.currentPlayerId !== expectedCurrentPlayerId) return false;
+
+	const nextId = getNextActivePlayerId(game.players, expectedCurrentPlayerId);
+	if (!nextId) return false;
+
+	game.currentPlayerId = nextId;
+	syncGameState().catch(console.error);
+	return true;
 }
 
 export function undoLastMove() {
