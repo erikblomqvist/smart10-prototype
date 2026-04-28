@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
+import { getUserIdFromAuthorization, recordAiImportEvent } from './_supabase.js';
 
 const QUESTION_TYPES = [
 	'standard',
@@ -108,6 +110,15 @@ const schema = {
 };
 
 export default async function handler(request, response) {
+	const requestId = randomUUID();
+	const startedAt = Date.now();
+	const model = process.env.GEMINI_CARD_IMPORT_MODEL || 'gemini-3-flash-preview';
+	const baseEvent = {
+		request_id: requestId,
+		model,
+		status: 'error',
+	};
+
 	if (request.method !== 'POST') {
 		response.setHeader('Allow', 'POST');
 		response.status(405).json({ error: 'Method not allowed' });
@@ -116,32 +127,98 @@ export default async function handler(request, response) {
 
 	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
-		response.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+		const errorMessage = 'GEMINI_API_KEY is not configured.';
+		await logAndRecord({
+			...baseEvent,
+			duration_ms: elapsedSince(startedAt),
+			error_message: errorMessage,
+		});
+		response.status(500).json({ error: errorMessage, request_id: requestId });
 		return;
 	}
 
 	try {
 		const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
 		const image = body?.image;
+		const monitoringContext = {
+			deck_id: toUuid(body?.deckId),
+			file_name: toOptionalString(body?.fileName, 255),
+			user_id: await getUserIdFromAuthorization(getAuthorizationHeader(request)),
+		};
 		if (!isDataUrl(image)) {
-			response.status(400).json({ error: 'Expected a JSON body with an image data URL.' });
+			const errorMessage = 'Expected a JSON body with an image data URL.';
+			await logAndRecord({
+				...baseEvent,
+				...monitoringContext,
+				duration_ms: elapsedSince(startedAt),
+				error_message: errorMessage,
+			});
+			response.status(400).json({ error: errorMessage, request_id: requestId });
 			return;
 		}
 
-		const [draft, optionImages] = await Promise.all([
-			extractCard(apiKey, image),
-			extractOptionImages(image).catch((error) =>
+		const imageInfo = getImageInfo(image);
+		const [draftResult, optionImagesResult] = await Promise.all([
+			measureAsync(() => extractCard(apiKey, image, model)),
+			measureAsync(() => extractOptionImages(image).catch((error) =>
 				createFailedOptionImages(
 					error instanceof Error
 						? error.message
 						: 'Could not extract option images.',
 				),
-			),
+			)),
 		]);
-		response.status(200).json({ ...draft, option_images: optionImages });
+
+		const optionImages = optionImagesResult.status === 'fulfilled'
+			? optionImagesResult.value
+			: createFailedOptionImages(
+				optionImagesResult.reason instanceof Error
+					? optionImagesResult.reason.message
+					: 'Could not extract option images.',
+			);
+		if (draftResult.status === 'rejected') {
+			const errorMessage = draftResult.reason instanceof Error
+				? draftResult.reason.message
+				: 'Failed to extract card.';
+			await logAndRecord({
+				...baseEvent,
+				...monitoringContext,
+				...imageInfo,
+				duration_ms: elapsedSince(startedAt),
+				gemini_duration_ms: draftResult.durationMs,
+				crop_duration_ms: optionImagesResult.durationMs,
+				option_image_warnings: collectOptionImageWarnings(optionImages),
+				error_message: errorMessage,
+			});
+			response.status(500).json({ error: errorMessage, request_id: requestId });
+			return;
+		}
+
+		const draft = draftResult.value;
+		const event = {
+			...baseEvent,
+			...monitoringContext,
+			...imageInfo,
+			status: 'success',
+			duration_ms: elapsedSince(startedAt),
+			gemini_duration_ms: draftResult.durationMs,
+			crop_duration_ms: optionImagesResult.durationMs,
+			question_type: toOptionalString(draft.type, 64),
+			question_number: Number.isInteger(draft.question_number) ? draft.question_number : null,
+			confidence: draft.confidence ?? null,
+			warnings: toStringArray(draft.warnings),
+			option_image_warnings: collectOptionImageWarnings(optionImages),
+		};
+		await logAndRecord(event);
+		response.status(200).json({ ...draft, option_images: optionImages, request_id: requestId });
 	} catch (error) {
-		console.error(error);
-		response.status(500).json({ error: error instanceof Error ? error.message : 'Failed to extract card.' });
+		const errorMessage = error instanceof Error ? error.message : 'Failed to extract card.';
+		await logAndRecord({
+			...baseEvent,
+			duration_ms: elapsedSince(startedAt),
+			error_message: errorMessage,
+		});
+		response.status(500).json({ error: errorMessage, request_id: requestId });
 	}
 }
 
@@ -227,9 +304,9 @@ function clamp(value, min, max) {
 /**
  * @param {string} apiKey
  * @param {string} image
+ * @param {string} model
  */
-async function extractCard(apiKey, image) {
-	const model = process.env.GEMINI_CARD_IMPORT_MODEL || 'gemini-3-flash-preview';
+async function extractCard(apiKey, image, model) {
 	const { mimeType, data } = parseDataUrl(image);
 	const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
 		method: 'POST',
@@ -283,6 +360,96 @@ function buildPrompt() {
 		'For colors, return objects like {"text":"red","backgroundColor":"hsl(0 80% 50%)"}. Estimate HSL from the visible color if needed.',
 		'If text is uncertain, make the best attempt and add a concise warning. Never invent extra options.',
 	].join('\n');
+}
+
+/**
+ * @template T
+ * @param {() => Promise<T>} operation
+ */
+async function measureAsync(operation) {
+	const startedAt = Date.now();
+	try {
+		return {
+			status: /** @type {'fulfilled'} */ ('fulfilled'),
+			value: await operation(),
+			durationMs: elapsedSince(startedAt),
+		};
+	} catch (error) {
+		return {
+			status: /** @type {'rejected'} */ ('rejected'),
+			reason: error,
+			durationMs: elapsedSince(startedAt),
+		};
+	}
+}
+
+/** @param {number} startedAt */
+function elapsedSince(startedAt) {
+	return Date.now() - startedAt;
+}
+
+/** @param {string} image */
+function getImageInfo(image) {
+	const { mimeType, data } = parseDataUrl(image);
+	return {
+		image_mime: mimeType,
+		image_bytes: Buffer.byteLength(data, 'base64'),
+	};
+}
+
+/** @param {unknown} value */
+function toUuid(value) {
+	return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+		? value
+		: null;
+}
+
+/** @param {{ headers?: Record<string, string | string[] | undefined> }} request */
+function getAuthorizationHeader(request) {
+	const value = request.headers?.authorization ?? request.headers?.Authorization;
+	return Array.isArray(value) ? value[0] : value;
+}
+
+/**
+ * @param {unknown} value
+ * @param {number} maxLength
+ */
+function toOptionalString(value, maxLength) {
+	return typeof value === 'string' && value.trim()
+		? value.trim().slice(0, maxLength)
+		: null;
+}
+
+/** @param {unknown} value */
+function toStringArray(value) {
+	return Array.isArray(value)
+		? value.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim())
+		: [];
+}
+
+/** @param {{ warnings: string[] }[]} optionImages */
+function collectOptionImageWarnings(optionImages) {
+	return optionImages
+		.map((image, index) => ({
+			index,
+			warnings: toStringArray(image.warnings),
+		}))
+		.filter((item) => item.warnings.length > 0);
+}
+
+/** @param {Record<string, unknown>} event */
+async function logAndRecord(event) {
+	const log = {
+		event: 'ai_import_extraction',
+		...event,
+	};
+	const message = JSON.stringify(log);
+	if (event.status === 'success') {
+		console.info(message);
+	} else {
+		console.error(message);
+	}
+	await recordAiImportEvent(event);
 }
 
 /**

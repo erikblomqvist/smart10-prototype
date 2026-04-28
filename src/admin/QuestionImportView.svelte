@@ -93,10 +93,17 @@
 		updateItem(id, (item) => ({ ...item, status: 'extracting', extractionError: '' }));
 		try {
 			const image = await imageToUploadDataUrl(file);
+			const { data: sessionData } = supabase
+				? await supabase.auth.getSession()
+				: { data: { session: null } };
+			const headers = new Headers({ 'Content-Type': 'application/json' });
+			if (sessionData.session?.access_token) {
+				headers.set('Authorization', `Bearer ${sessionData.session.access_token}`);
+			}
 			const response = await fetch('/api/extract-card', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ image }),
+				headers,
+				body: JSON.stringify({ image, deckId, fileName: file.name }),
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data?.error ?? 'Extraction failed.');
