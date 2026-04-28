@@ -13,13 +13,19 @@
 		undoLastMove,
 	} from '../lib/game.svelte.js';
 	import { QUESTION_TYPES } from '../data/questionTypes.js';
-	import GameMenu from '../components/GameMenu.svelte';
-	import QuestionMeta from '../components/QuestionMeta.svelte';
-	import QuestionWheel from '../components/QuestionWheel.svelte';
-	import AnswerDialog from '../components/AnswerDialog.svelte';
-	import UndoLastMoveDialog from '../components/UndoLastMoveDialog.svelte';
-	import RoundReviewPanel from '../components/RoundReviewPanel.svelte';
-	import GameFinishedPodium from '../components/GameFinishedPodium.svelte';
+	import GamePlayingSurface from './game/GamePlayingSurface.svelte';
+	import GameRoundReviewSurface from './game/GameRoundReviewSurface.svelte';
+	import GameFinishedSurface from './game/GameFinishedSurface.svelte';
+	import {
+		DEFAULT_ROTATION_EASING,
+		getSeatRotationTurns,
+		useRoundIntro,
+	} from './game/useRoundIntro.svelte.js';
+	import {
+		SPRING_DRAG_RETURN_DURATION_MS,
+		useSpringDrag,
+	} from './game/useSpringDrag.svelte.js';
+	import { useGameInteractionLock } from './game/useGameInteractionLock.js';
 
 	/** @type {{ onstartover: () => void }} */
 	let { onstartover } = $props();
@@ -67,9 +73,21 @@
 			: null,
 	);
 
-	function getSeatRotationTurns(/** @type {number} */ seatPosition) {
-		return ((seatPosition + 4) % 8) / 8;
-	}
+	const STREAK_THRESHOLD = 3;
+	const STREAK_CELEBRATION_MS = 1000;
+	const SPRING_DRAG_IGNORE_SELECTOR =
+		'button, a, input, select, textarea, [role="button"], [popover], [data-game-scroll-lock-allow]';
+	let gameSurfaceEl = $state(/** @type {HTMLElement | null} */ (null));
+	let streakCelebrationPlayerId = $state(/** @type {string|null} */ (null));
+	let streakBurstKey = $state(0);
+	let streakCelebrationTimerId =
+		/** @type {ReturnType<typeof setTimeout>|null} */ (null);
+
+	const roundIntro = useRoundIntro();
+	const springDrag = useSpringDrag({ canStart: canStartSpringDrag });
+	const interactionLock = useGameInteractionLock({
+		getSurfaceElement: () => gameSurfaceEl,
+	});
 
 	const seatRotation = $derived(
 		currentPlayer ? getSeatRotationTurns(currentPlayer.seatPosition) : 0,
@@ -84,294 +102,33 @@
 		lastPlayer ? getSeatRotationTurns(lastPlayer.seatPosition) : 0,
 	);
 
-	const INTRO_INITIAL_FRAME_MS = 30;
-	const INTRO_SLOW_ARC_TURNS = 4 / 360;
-	const INTRO_TRAVEL_MS_PER_TURN = 1800;
-	const INTRO_TRAVEL_MIN_MS = 280;
-	const INTRO_TRAVEL_MAX_MS = 720;
-	const INTRO_SLOW_EASING = 'cubic-bezier(0.37, 0.12, 0.63, 0.88)';
-	const INTRO_TRAVEL_EASING = 'cubic-bezier(0.3, 0.28, 0.7, 0.92)';
-	const DEFAULT_ROTATION_EASING = 'linear(0, 0.0016 0.34%, 0.0084 0.79%, 0.0369 1.7%, 0.0894, 0.1594 3.73%, 0.3141 5.54%, 0.7904 10.52%, 0.9119, 1.0156, 1.0992, 1.1617 16.39%, 1.1836 17.07%, 1.2039 17.86%, 1.2168 18.54%, 1.2271 19.33%, 1.2329 20.24%, 1.2327, 1.2263, 1.2146, 1.1988 24.31%, 1.1774 25.44%, 1.0565 30.87%, 1.0055 33.58%, 0.9826 35.16%, 0.9664 36.63%, 0.9544, 0.9476 39.8%, 0.9455 41.83%, 0.9498 43.98%, 0.959 46.24%, 0.9861 51.44%, 0.9978 54.04%, 1.007, 1.0118 59.92%, 1.0118 64.56%, 1.0006 74.62%, 0.9974 80.05%, 1.0005 99.95%)';
-	const INTRO_READING_BASE_MS = 1400;
-	const INTRO_READING_MS_PER_CHARACTER = 25;
-	const INTRO_READING_MIN_MS = 1800;
-	const INTRO_READING_MAX_MS = 4000;
-	const SPRING_DRAG_MAX_ROTATION = 1;
-	const SPRING_DRAG_ROTATION_PER_PX = 0.24 / 360;
-	const SPRING_DRAG_RETURN_DURATION_MS = 620;
-	const STREAK_THRESHOLD = 3;
-	const STREAK_CELEBRATION_MS = 1000;
-	const SPRING_DRAG_IGNORE_SELECTOR =
-		'button, a, input, select, textarea, [role="button"], [popover], [data-game-scroll-lock-allow]';
-	let introSeatRotation = $state(/** @type {number|null} */ (null));
-	let introRotationDurationMs = $state(0);
-	let introRotationEasing = $state(INTRO_SLOW_EASING);
-	let introResetIsInstant = $state(false);
-	let playedIntroRoundKey = /** @type {string | null} */ (null);
-	let introTimerIds = /** @type {ReturnType<typeof setTimeout>[]} */ ([]);
-	let introResetFrameIds = /** @type {number[]} */ ([]);
-	let springDragPointerId = $state(/** @type {number|null} */ (null));
-	let springDragStartY = 0;
-	let springDragRotationOffset = $state(0);
-	let springDragIsActive = $state(false);
-	let streakCelebrationPlayerId = $state(/** @type {string|null} */ (null));
-	let streakBurstKey = $state(0);
-	let streakCelebrationTimerId = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
-	const wheelSeatRotation = $derived(introSeatRotation ?? seatRotation);
+	const wheelSeatRotation = $derived(roundIntro.seatRotation ?? seatRotation);
 	const interactiveWheelSeatRotation = $derived(
-		wheelSeatRotation + springDragRotationOffset,
+		wheelSeatRotation + springDrag.rotationOffset,
 	);
-	const streakCelebrationActive = $derived(streakCelebrationPlayerId !== null);
+	const streakCelebrationActive = $derived(
+		streakCelebrationPlayerId !== null,
+	);
 	const wheelStreakLevel = $derived(currentPlayer?.roundScore ?? 0);
 	const wheelStreakColor = $derived(
 		currentPlayer ? `var(--${currentPlayer.color})` : 'var(--orange-700)',
 	);
 	const wheelRotationDurationMs = $derived(
-		introResetIsInstant
+		roundIntro.resetIsInstant
 			? 0
-			: springDragIsActive
-			? 0
-			: springDragRotationOffset !== 0
-				? SPRING_DRAG_RETURN_DURATION_MS
-				: introSeatRotation === null
+			: springDrag.isActive
+				? 0
+				: springDrag.rotationOffset !== 0
 					? SPRING_DRAG_RETURN_DURATION_MS
-					: introRotationDurationMs,
+					: roundIntro.seatRotation === null
+						? SPRING_DRAG_RETURN_DURATION_MS
+						: roundIntro.rotationDurationMs,
 	);
 	const wheelRotationEasing = $derived(
-		introSeatRotation === null
+		roundIntro.seatRotation === null
 			? DEFAULT_ROTATION_EASING
-			: introRotationEasing,
+			: roundIntro.rotationEasing,
 	);
-
-	const GAME_LOCK_CLASS = 'game-interaction-lock';
-	const GAME_LOCK_SCROLL_ALLOW_SELECTOR = '[data-game-scroll-lock-allow]';
-	const DOUBLE_TAP_DELAY = 300;
-	const lockedElements = $derived([document.documentElement, document.body]);
-	let lastTouchEnd = 0;
-	let lastTouchY = 0;
-	let gameSurfaceEl = $state(/** @type {HTMLElement | null} */ (null));
-	let viewportResetFrame = /** @type {number | null} */ (null);
-
-	function clamp(
-		/** @type {number} */ value,
-		/** @type {number} */ min,
-		/** @type {number} */ max,
-	) {
-		return Math.min(Math.max(value, min), max);
-	}
-
-	function getQuestionReadingMs(/** @type {string} */ text) {
-		return clamp(
-			INTRO_READING_BASE_MS +
-				text.length * INTRO_READING_MS_PER_CHARACTER,
-			INTRO_READING_MIN_MS,
-			INTRO_READING_MAX_MS,
-		);
-	}
-
-	function clearIntroTimers() {
-		introTimerIds.forEach(clearTimeout);
-		introTimerIds = [];
-	}
-
-	function clearIntroResetFrames() {
-		introResetFrameIds.forEach(cancelAnimationFrame);
-		introResetFrameIds = [];
-	}
-
-	function scheduleIntroResetFrame(/** @type {() => void} */ callback) {
-		const frameId = requestAnimationFrame(() => {
-			introResetFrameIds = introResetFrameIds.filter((id) => id !== frameId);
-			callback();
-		});
-
-		introResetFrameIds = [...introResetFrameIds, frameId];
-	}
-
-	function resetIntroRotation(/** @type {{ instant?: boolean }} */ options = {}) {
-		clearIntroTimers();
-		clearIntroResetFrames();
-		introRotationDurationMs = 0;
-		introSeatRotation = null;
-
-		if (options.instant) {
-			introResetIsInstant = true;
-			scheduleIntroResetFrame(() => {
-				scheduleIntroResetFrame(() => {
-					introResetIsInstant = false;
-				});
-			});
-		} else {
-			introResetIsInstant = false;
-		}
-	}
-
-	function scheduleIntroStep(
-		/** @type {number} */ delay,
-		/** @type {() => void} */ callback,
-	) {
-		const timerId = setTimeout(callback, delay);
-		introTimerIds = [...introTimerIds, timerId];
-	}
-
-	function getIntroPlayerPath(
-		/** @type {{ id: string, seatPosition: number }} */ starter,
-	) {
-		const sortedPlayers = [...game.players].sort(
-			(a, b) => a.turnOrder - b.turnOrder,
-		);
-		const starterIndex = sortedPlayers.findIndex(
-			(player) => player.id === starter.id,
-		);
-
-		if (starterIndex === -1 || sortedPlayers.length <= 1) {
-			return [];
-		}
-
-		const rotatedPlayers = [
-			...sortedPlayers.slice(starterIndex),
-			...sortedPlayers.slice(0, starterIndex),
-		];
-
-		return [...rotatedPlayers, starter];
-	}
-
-	function getForwardRotationTarget(
-		/** @type {number} */ fromTurns,
-		/** @type {number} */ targetTurns,
-	) {
-		let target = targetTurns;
-
-		while (target <= fromTurns) {
-			target += 1;
-		}
-
-		return target;
-	}
-
-	function getIntroTravelMs(/** @type {number} */ distanceTurns) {
-		return clamp(
-			distanceTurns * INTRO_TRAVEL_MS_PER_TURN,
-			INTRO_TRAVEL_MIN_MS,
-			INTRO_TRAVEL_MAX_MS,
-		);
-	}
-
-	function startRoundIntro(
-		/** @type {{ id: string, seatPosition: number }} */ starter,
-		/** @type {string} */ questionText,
-	) {
-		const playerPath = getIntroPlayerPath(starter);
-		if (!playerPath.length) return false;
-
-		clearIntroTimers();
-		clearIntroResetFrames();
-
-		const readingMs = getQuestionReadingMs(questionText);
-		const seatStops = playerPath.map((player) =>
-			getSeatRotationTurns(player.seatPosition),
-		);
-		let elapsedMs = INTRO_INITIAL_FRAME_MS;
-		let currentRotation = seatStops[0] - INTRO_SLOW_ARC_TURNS;
-		const firstSlowEnd = seatStops[0] + INTRO_SLOW_ARC_TURNS;
-
-		introResetIsInstant = false;
-		introRotationDurationMs = 0;
-		introRotationEasing = INTRO_SLOW_EASING;
-		introSeatRotation = currentRotation;
-
-		scheduleIntroStep(elapsedMs, () => {
-			introRotationDurationMs = readingMs;
-			introRotationEasing = INTRO_SLOW_EASING;
-			introSeatRotation = firstSlowEnd;
-		});
-
-		elapsedMs += readingMs;
-		currentRotation = firstSlowEnd;
-
-		seatStops.slice(1).forEach((seatRotationTurns, index, stops) => {
-			const isFinalStop = index === stops.length - 1;
-			const slowStart = getForwardRotationTarget(
-				currentRotation,
-				seatRotationTurns - INTRO_SLOW_ARC_TURNS,
-			);
-			const travelMs = getIntroTravelMs(slowStart - currentRotation);
-			const slowEnd =
-				slowStart + INTRO_SLOW_ARC_TURNS * (isFinalStop ? 1 : 2);
-
-			scheduleIntroStep(elapsedMs, () => {
-				introRotationDurationMs = travelMs;
-				introRotationEasing = INTRO_TRAVEL_EASING;
-				introSeatRotation = slowStart;
-			});
-
-			elapsedMs += travelMs;
-
-			scheduleIntroStep(elapsedMs, () => {
-				introRotationDurationMs = readingMs;
-				introRotationEasing = INTRO_SLOW_EASING;
-				introSeatRotation = slowEnd;
-			});
-
-			elapsedMs += readingMs;
-			currentRotation = slowEnd;
-		});
-
-		scheduleIntroStep(elapsedMs, () => {
-			resetIntroRotation({ instant: true });
-		});
-
-		return true;
-	}
-
-	function setGameInteractionLock(/** @type {boolean} */ locked) {
-		lockedElements.forEach((element) =>
-			element.classList.toggle(GAME_LOCK_CLASS, locked),
-		);
-	}
-
-	function resetGameViewport() {
-		const wasLocked = document.body.classList.contains(GAME_LOCK_CLASS);
-
-		if (wasLocked) {
-			setGameInteractionLock(false);
-		}
-
-		window.scrollTo(0, 0);
-		document.scrollingElement?.scrollTo(0, 0);
-		document.documentElement.scrollTop = 0;
-		document.body.scrollTop = 0;
-
-		if (gameSurfaceEl) {
-			gameSurfaceEl.scrollTop = 0;
-			gameSurfaceEl.scrollLeft = 0;
-		}
-
-		if (wasLocked) {
-			setGameInteractionLock(true);
-		}
-	}
-
-	function scheduleGameViewportReset() {
-		if (viewportResetFrame !== null) {
-			cancelAnimationFrame(viewportResetFrame);
-		}
-
-		resetGameViewport();
-		viewportResetFrame = requestAnimationFrame(() => {
-			resetGameViewport();
-			viewportResetFrame = requestAnimationFrame(() => {
-				resetGameViewport();
-				viewportResetFrame = null;
-			});
-		});
-	}
-
-	function resetSpringDrag() {
-		springDragPointerId = null;
-		springDragIsActive = false;
-		springDragRotationOffset = 0;
-	}
 
 	function clearStreakCelebration() {
 		if (streakCelebrationTimerId !== null) {
@@ -407,7 +164,9 @@
 		}
 	}
 
-	function isSpringDragIgnoredTarget(/** @type {EventTarget | null} */ target) {
+	function isSpringDragIgnoredTarget(
+		/** @type {EventTarget | null} */ target,
+	) {
 		return (
 			target instanceof Element &&
 			target.closest(SPRING_DRAG_IGNORE_SELECTOR) !== null
@@ -420,7 +179,7 @@
 			event.pointerType !== 'mouse' &&
 			game.status === 'playing' &&
 			question !== null &&
-			introSeatRotation === null &&
+			roundIntro.seatRotation === null &&
 			!streakCelebrationActive &&
 			!dialogOpen &&
 			!undoDialogOpen &&
@@ -429,146 +188,13 @@
 		);
 	}
 
-	function handleSpringDragPointerDown(
-		/** @type {PointerEvent & { currentTarget: HTMLElement }} */ event,
-	) {
-		if (!canStartSpringDrag(event)) return;
-
-		springDragPointerId = event.pointerId;
-		springDragStartY = event.clientY;
-		springDragRotationOffset = 0;
-		springDragIsActive = true;
-		event.currentTarget.setPointerCapture(event.pointerId);
-		event.preventDefault();
-	}
-
-	function handleSpringDragPointerMove(/** @type {PointerEvent} */ event) {
-		if (springDragPointerId !== event.pointerId) return;
-
-		const deltaY = event.clientY - springDragStartY;
-		springDragRotationOffset = clamp(
-			deltaY * SPRING_DRAG_ROTATION_PER_PX,
-			-SPRING_DRAG_MAX_ROTATION,
-			SPRING_DRAG_MAX_ROTATION,
-		);
-		event.preventDefault();
-	}
-
-	function handleSpringDragPointerEnd(
-		/** @type {PointerEvent & { currentTarget: HTMLElement }} */ event,
-	) {
-		if (springDragPointerId !== event.pointerId) return;
-
-		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-			event.currentTarget.releasePointerCapture(event.pointerId);
-		}
-
-		resetSpringDrag();
-		event.preventDefault();
-	}
-
-	function preventDefault(/** @type {Event} */ event) {
-		event.preventDefault();
-	}
-
-	function getAllowedGameScroller(/** @type {EventTarget | null} */ target) {
-		return target instanceof Element
-			? target.closest(GAME_LOCK_SCROLL_ALLOW_SELECTOR)
-			: null;
-	}
-
-	function canScrollAllowedElement(
-		/** @type {Element} */ element,
-		/** @type {number} */ deltaY,
-	) {
-		const scrollableElement = /** @type {HTMLElement} */ (element);
-		const canScroll =
-			scrollableElement.scrollHeight > scrollableElement.clientHeight;
-		const isAtTop = scrollableElement.scrollTop <= 0;
-		const isAtBottom =
-			scrollableElement.scrollTop + scrollableElement.clientHeight >=
-			scrollableElement.scrollHeight - 1;
-
-		return (
-			canScroll &&
-			!((deltaY > 0 && isAtTop) || (deltaY < 0 && isAtBottom))
-		);
-	}
-
-	function handleLockedTouchStart(/** @type {TouchEvent} */ event) {
-		lastTouchY = event.touches[0]?.clientY ?? 0;
-	}
-
-	function handleLockedTouchMove(/** @type {TouchEvent} */ event) {
-		const allowedScroller = getAllowedGameScroller(event.target);
-		const currentTouchY = event.touches[0]?.clientY ?? lastTouchY;
-		const deltaY = currentTouchY - lastTouchY;
-
-		if (
-			event.touches.length > 1 ||
-			!allowedScroller ||
-			!canScrollAllowedElement(allowedScroller, deltaY)
-		) {
-			event.preventDefault();
-		}
-
-		lastTouchY = currentTouchY;
-	}
-
-	function handleLockedTouchEnd(/** @type {TouchEvent} */ event) {
-		const now = Date.now();
-
-		if (now - lastTouchEnd <= DOUBLE_TAP_DELAY) {
-			event.preventDefault();
-		}
-
-		lastTouchEnd = now;
-	}
-
-	onMount(() => {
-		const touchOptions = { passive: false };
-
-		resetGameViewport();
-		setGameInteractionLock(true);
-		document.addEventListener('touchstart', handleLockedTouchStart, {
-			passive: true,
-		});
-		document.addEventListener(
-			'touchmove',
-			handleLockedTouchMove,
-			touchOptions,
-		);
-		document.addEventListener(
-			'touchend',
-			handleLockedTouchEnd,
-			touchOptions,
-		);
-		document.addEventListener('gesturestart', preventDefault);
-		document.addEventListener('gesturechange', preventDefault);
-		document.addEventListener('gestureend', preventDefault);
-
-		return () => {
-			if (viewportResetFrame !== null) {
-				cancelAnimationFrame(viewportResetFrame);
-			}
-
-			setGameInteractionLock(false);
-			resetIntroRotation();
-			clearStreakCelebration();
-			document.removeEventListener('touchstart', handleLockedTouchStart);
-			document.removeEventListener('touchmove', handleLockedTouchMove);
-			document.removeEventListener('touchend', handleLockedTouchEnd);
-			document.removeEventListener('gesturestart', preventDefault);
-			document.removeEventListener('gesturechange', preventDefault);
-			document.removeEventListener('gestureend', preventDefault);
-		};
-	});
+	onMount(() => clearStreakCelebration);
 
 	$effect(() => {
 		const roundNumber = game.currentRound?.roundNumber;
 
 		if (game.status === 'playing' && roundNumber) {
-			scheduleGameViewportReset();
+			interactionLock.scheduleViewportReset();
 		}
 	});
 
@@ -578,41 +204,19 @@
 			dialogOpen ||
 			undoDialogOpen ||
 			streakCelebrationActive ||
-			introSeatRotation !== null
+			roundIntro.seatRotation !== null
 		) {
-			resetSpringDrag();
+			springDrag.reset();
 		}
 	});
 
 	$effect(() => {
-		const round = game.currentRound;
-		const starter = currentPlayer;
-		const roundQuestion = round?.question ?? null;
-		const playerCount = game.players.length;
-		const roundKey = roundQuestion
-			? `${round?.roundNumber ?? 0}:${roundQuestion.id}`
-			: null;
-		const hasRoundProgress =
-			(round?.answeredBlobs.length ?? 0) > 0 ||
-			round?.lastPlayerId !== null;
-
-		if (
-			game.status !== 'playing' ||
-			!roundKey ||
-			!starter ||
-			playerCount <= 1 ||
-			hasRoundProgress ||
-			playedIntroRoundKey === roundKey
-		) {
-			if (game.status !== 'playing' || hasRoundProgress) {
-				resetIntroRotation();
-			}
-			return;
-		}
-
-		if (startRoundIntro(starter, roundQuestion.text)) {
-			playedIntroRoundKey = roundKey;
-		}
+		roundIntro.syncRound({
+			status: game.status,
+			round: game.currentRound,
+			starter: currentPlayer,
+			playerCount: game.players.length,
+		});
 	});
 
 	$effect(() => {
@@ -715,158 +319,55 @@
 </script>
 
 {#if game.status === 'playing'}
-	<main
-		bind:this={gameSurfaceEl}
-		class="main--game"
-		data-question-type={questionTypeConfig?.cssToken}
-		onpointerdown={handleSpringDragPointerDown}
-		onpointermove={handleSpringDragPointerMove}
-		onpointerup={handleSpringDragPointerEnd}
-		onpointercancel={handleSpringDragPointerEnd}
-		onlostpointercapture={handleSpringDragPointerEnd}
-		style:--current-player-color={currentPlayer
-			? `var(--${currentPlayer.color})`
-			: null}
-	>
-		<GameMenu
-			{currentPlayer}
-			players={game.players}
-			onstartover={handleStartOver}
-			onsave={handleSave}
-			onundo={handleUndo}
-			canundo={undoIsAvailable && !streakCelebrationActive}
-		/>
-
-		{#if question}
-			<QuestionMeta
-				questionType={question.type}
-				deck={question.deck}
-				deckIcon={question.deckIcon}
-			/>
-
-			<QuestionWheel
-				questionType={question.type}
-				questionText={question.text}
-				answers={question.options}
-				correctAnswers={question.correctAnswers}
-				answerMedia={question.answerMedia}
-				blobs={blobStates}
-				seatRotation={interactiveWheelSeatRotation}
-				rotationDurationMs={wheelRotationDurationMs}
-				rotationEasing={wheelRotationEasing}
-				streakLevel={wheelStreakLevel}
-				streakColor={wheelStreakColor}
-				{streakBurstKey}
-				{undoableBlobIndex}
-				onblobclick={streakCelebrationActive ? undefined : handleBlobClick}
-				onundoblobclick={streakCelebrationActive ? undefined : handleUndoBlobClick}
-			/>
-		{/if}
-
-		<div class="game-action">
-			<button
-				class="game-action__btn"
-				class:game-action__btn--end-round={roundIsOver}
-				type="button"
-				disabled={streakCelebrationActive}
-				onclick={handlePassOrEnd}
-			>
-				{roundIsOver ? $_('game.end_round') : $_('game.pass')}
-			</button>
-		</div>
-
-		<AnswerDialog
-			open={dialogOpen}
-			blobLabel={pendingBlobLabel}
-			correctAnswer={pendingBlobAnswer}
-			questionType={question?.type ?? 'standard'}
-			seatRotation={interactiveWheelSeatRotation}
-			rotationDurationMs={wheelRotationDurationMs}
-			rotationEasing={wheelRotationEasing}
-			onresult={handleDialogResult}
-		/>
-		{#if undoDialogOpen}
-			<UndoLastMoveDialog
-				open={true}
-				onconfirm={handleUndoDialogConfirm}
-				oncancel={() => (undoDialogOpen = false)}
-			/>
-		{/if}
-	</main>
+	<GamePlayingSurface
+		bind:surfaceElement={gameSurfaceEl}
+		questionTypeToken={questionTypeConfig?.cssToken}
+		{currentPlayer}
+		players={game.players}
+		{question}
+		{blobStates}
+		seatRotation={interactiveWheelSeatRotation}
+		rotationDurationMs={wheelRotationDurationMs}
+		rotationEasing={wheelRotationEasing}
+		streakLevel={wheelStreakLevel}
+		streakColor={wheelStreakColor}
+		{streakBurstKey}
+		{undoableBlobIndex}
+		{undoIsAvailable}
+		{roundIsOver}
+		{streakCelebrationActive}
+		{dialogOpen}
+		{pendingBlobLabel}
+		{pendingBlobAnswer}
+		{undoDialogOpen}
+		onstartover={handleStartOver}
+		onsave={handleSave}
+		onundo={handleUndo}
+		onpassorend={handlePassOrEnd}
+		onblobclick={handleBlobClick}
+		onundoblobclick={handleUndoBlobClick}
+		ondialogresult={handleDialogResult}
+		onundoconfirm={handleUndoDialogConfirm}
+		onundocancel={() => (undoDialogOpen = false)}
+		onpointerdown={springDrag.handlePointerDown}
+		onpointermove={springDrag.handlePointerMove}
+		onpointerend={springDrag.handlePointerEnd}
+	/>
 {:else if game.status === 'round_review'}
-	<main
-		class="main--review"
-		data-question-type={questionTypeConfig?.cssToken}
-	>
-		{#if question}
-			<QuestionWheel
-				questionType={question.type}
-				questionText={question.text}
-				answers={question.options}
-				correctAnswers={question.correctAnswers}
-				answerMedia={question.answerMedia}
-				blobs={reviewBlobStates}
-				seatRotation={reviewSeatRotation}
-				onblobclick={handleReviewBlobClick}
-			/>
-		{/if}
-
-		<RoundReviewPanel
-			players={game.players}
-			roundNumber={game.currentRound?.roundNumber}
-			onnext={startNextRound}
-		/>
-	</main>
+	<GameRoundReviewSurface
+		questionTypeToken={questionTypeConfig?.cssToken}
+		{question}
+		players={game.players}
+		roundNumber={game.currentRound?.roundNumber}
+		{reviewBlobStates}
+		seatRotation={reviewSeatRotation}
+		onblobclick={handleReviewBlobClick}
+		onnext={startNextRound}
+	/>
 {:else if game.status === 'finished'}
-	<main
-		class="main--finished"
-		data-question-type={questionTypeConfig?.cssToken}
-	>
-		<GameFinishedPodium
-			players={game.players}
-			onstartover={handleStartOver}
-		/>
-	</main>
+	<GameFinishedSurface
+		questionTypeToken={questionTypeConfig?.cssToken}
+		players={game.players}
+		onstartover={handleStartOver}
+	/>
 {/if}
-
-<style>
-	.game-action {
-		position: fixed;
-		bottom: calc(var(--question-meta-space, 4rem) + 0.75rem);
-		right: max(1rem, env(safe-area-inset-right));
-		z-index: 5;
-	}
-
-	.game-action__btn {
-		border: none;
-		border-radius: 0.5rem;
-		padding: 0.625rem 1.25rem;
-		background-color: var(--grayscale-800);
-		color: var(--white);
-		font-family: 'Oswald', sans-serif;
-		font-size: var(--font-size-base);
-		font-weight: 600;
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
-		cursor: pointer;
-		transition: background-color 0.15s;
-		box-shadow: 0 2px 8px hsl(0 0% 0% / 0.25);
-	}
-
-	.game-action__btn:hover {
-		background-color: var(--grayscale-700);
-	}
-
-	.game-action__btn:disabled {
-		opacity: 0.55;
-		cursor: not-allowed;
-	}
-
-	.game-action__btn--end-round {
-		background-color: var(--orange-700);
-	}
-
-	.game-action__btn--end-round:hover {
-		background-color: var(--orange-800);
-	}
-</style>

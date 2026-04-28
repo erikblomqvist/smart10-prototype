@@ -1,0 +1,154 @@
+<script>
+	import GameMenu from '../../components/GameMenu.svelte';
+	import QuestionMeta from '../../components/QuestionMeta.svelte';
+	import QuestionWheel from '../../components/QuestionWheel.svelte';
+	import AnswerDialog from '../../components/AnswerDialog.svelte';
+	import UndoLastMoveDialog from '../../components/UndoLastMoveDialog.svelte';
+	import GameActionButton from './GameActionButton.svelte';
+
+	/**
+	 * @type {{
+	 *   surfaceElement: HTMLElement|null,
+	 *   questionTypeToken?: string,
+	 *   currentPlayer: import('../../lib/game.svelte.js').GamePlayer|null,
+	 *   players: import('../../lib/game.svelte.js').GamePlayer[],
+	 *   question: import('../../lib/game.svelte.js').GameQuestion|null,
+	 *   blobStates: (boolean|null)[],
+	 *   seatRotation: number,
+	 *   rotationDurationMs: number,
+	 *   rotationEasing: string,
+	 *   streakLevel: number,
+	 *   streakColor: string,
+	 *   streakBurstKey: number,
+	 *   undoableBlobIndex: number|null,
+	 *   undoIsAvailable: boolean,
+	 *   roundIsOver: boolean,
+	 *   streakCelebrationActive: boolean,
+	 *   dialogOpen: boolean,
+	 *   pendingBlobLabel: string,
+	 *   pendingBlobAnswer: import('../../data/game.js').CorrectAnswer|null,
+	 *   undoDialogOpen: boolean,
+	 *   onstartover: () => void,
+	 *   onsave: () => void,
+	 *   onundo: () => void,
+	 *   onpassorend: () => void,
+	 *   onblobclick: (index: number) => void,
+	 *   onundoblobclick: (index: number) => void,
+	 *   ondialogresult: (isCorrect: boolean) => void,
+	 *   onundoconfirm: () => void,
+	 *   onundocancel: () => void,
+	 *   onpointerdown: (event: PointerEvent & { currentTarget: HTMLElement }) => void,
+	 *   onpointermove: (event: PointerEvent) => void,
+	 *   onpointerend: (event: PointerEvent & { currentTarget: HTMLElement }) => void,
+	 * }}
+	 */
+	let {
+		surfaceElement = $bindable(null),
+		questionTypeToken,
+		currentPlayer,
+		players,
+		question,
+		blobStates,
+		seatRotation,
+		rotationDurationMs,
+		rotationEasing,
+		streakLevel,
+		streakColor,
+		streakBurstKey,
+		undoableBlobIndex,
+		undoIsAvailable,
+		roundIsOver,
+		streakCelebrationActive,
+		dialogOpen,
+		pendingBlobLabel,
+		pendingBlobAnswer,
+		undoDialogOpen,
+		onstartover,
+		onsave,
+		onundo,
+		onpassorend,
+		onblobclick,
+		onundoblobclick,
+		ondialogresult,
+		onundoconfirm,
+		onundocancel,
+		onpointerdown,
+		onpointermove,
+		onpointerend,
+	} = $props();
+</script>
+
+<main
+	bind:this={surfaceElement}
+	class="main--game"
+	data-question-type={questionTypeToken}
+	{onpointerdown}
+	{onpointermove}
+	onpointerup={onpointerend}
+	onpointercancel={onpointerend}
+	onlostpointercapture={onpointerend}
+	style:--current-player-color={currentPlayer
+		? `var(--${currentPlayer.color})`
+		: null}
+>
+	<GameMenu
+		{currentPlayer}
+		{players}
+		{onstartover}
+		{onsave}
+		{onundo}
+		canundo={undoIsAvailable && !streakCelebrationActive}
+	/>
+
+	{#if question}
+		<QuestionMeta
+			questionType={question.type}
+			deck={question.deck}
+			deckIcon={question.deckIcon}
+		/>
+
+		<QuestionWheel
+			questionType={question.type}
+			questionText={question.text}
+			answers={question.options}
+			correctAnswers={question.correctAnswers}
+			answerMedia={question.answerMedia}
+			blobs={blobStates}
+			{seatRotation}
+			{rotationDurationMs}
+			{rotationEasing}
+			{streakLevel}
+			{streakColor}
+			{streakBurstKey}
+			{undoableBlobIndex}
+			onblobclick={streakCelebrationActive ? undefined : onblobclick}
+			onundoblobclick={streakCelebrationActive
+				? undefined
+				: onundoblobclick}
+		/>
+	{/if}
+
+	<GameActionButton
+		{roundIsOver}
+		disabled={streakCelebrationActive}
+		onclick={onpassorend}
+	/>
+
+	<AnswerDialog
+		open={dialogOpen}
+		blobLabel={pendingBlobLabel}
+		correctAnswer={pendingBlobAnswer}
+		questionType={question?.type ?? 'standard'}
+		{seatRotation}
+		{rotationDurationMs}
+		{rotationEasing}
+		onresult={ondialogresult}
+	/>
+	{#if undoDialogOpen}
+		<UndoLastMoveDialog
+			open={true}
+			onconfirm={onundoconfirm}
+			oncancel={onundocancel}
+		/>
+	{/if}
+</main>
