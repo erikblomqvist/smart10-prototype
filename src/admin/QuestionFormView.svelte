@@ -117,10 +117,78 @@
 		};
 	}
 
+	/** @param {number} h @param {number} s @param {number} l */
+	function hslToRgb(h, s, l) {
+		h /= 360;
+		s /= 100;
+		l /= 100;
+		if (s === 0) {
+			const v = Math.round(l * 255);
+			return [v, v, v];
+		}
+		const hue2rgb = (/** @type {number} */ p, /** @type {number} */ q, /** @type {number} */ t) => {
+			if (t < 0) t += 1;
+			if (t > 1) t -= 1;
+			if (t < 1 / 6) return p + (q - p) * 6 * t;
+			if (t < 1 / 2) return q;
+			if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+			return p;
+		};
+		const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+		const p = 2 * l - q;
+		const r = hue2rgb(p, q, h + 1 / 3);
+		const g = hue2rgb(p, q, h);
+		const b = hue2rgb(p, q, h - 1 / 3);
+		return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+	}
+
+	/** @param {number} h @param {number} s @param {number} l */
+	function hslToHex(h, s, l) {
+		const [r, g, b] = hslToRgb(h, s, l);
+		return `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+	}
+
+	/** @param {string} hex */
+	function hexToHsl(hex) {
+		const n = hex.replace('#', '');
+		const r = parseInt(n.slice(0, 2), 16) / 255;
+		const g = parseInt(n.slice(2, 4), 16) / 255;
+		const b = parseInt(n.slice(4, 6), 16) / 255;
+		const max = Math.max(r, g, b);
+		const min = Math.min(r, g, b);
+		let h = 0;
+		let s = 0;
+		const l = (max + min) / 2;
+		const d = max - min;
+		if (d !== 0) {
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch (max) {
+				case r:
+					h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+					break;
+				case g:
+					h = ((b - r) / d + 2) / 6;
+					break;
+				default:
+					h = ((r - g) / d + 4) / 6;
+			}
+		}
+		return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+	}
+
 	/** @param {number} i */
 	function colorToBg(i) {
 		const { h, s, l } = colorHsl[i];
 		return `hsl(${h} ${s}% ${l}%)`;
+	}
+
+	/** @param {number} i @param {string} hex */
+	function applyColorFromNativePicker(i, hex) {
+		const { h, s, l } = hexToHsl(hex);
+		colorHsl[i].h = h;
+		colorHsl[i].s = s;
+		colorHsl[i].l = l;
+		syncColorAnswer(i);
 	}
 
 	/** @param {number} i */
@@ -449,7 +517,16 @@
 
 							{:else if type === 'colors'}
 								<div class="admin-color-picker">
-									<span class="admin-color-swatch" style="background:{colorToBg(i)}"></span>
+									<label class="admin-color-swatch" style="background:{colorToBg(i)}" title="Pick color" aria-label="Open color picker">
+										<input
+											type="color"
+											class="admin-color-picker-native"
+											value={hslToHex(colorHsl[i].h, colorHsl[i].s, colorHsl[i].l)}
+											oninput={(e) =>
+												applyColorFromNativePicker(i, /** @type {HTMLInputElement} */ (e.currentTarget).value)}
+											disabled={saving}
+										/>
+									</label>
 									<label class="admin-color-slider">
 										H
 										<input type="range" min="0" max="360"
