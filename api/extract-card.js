@@ -353,10 +353,14 @@ function buildPrompt() {
 	return [
 		'Extract one Smart10-style physical card into the exact JSON schema.',
 		'The app stores every card as one question with exactly 10 option labels and exactly 10 corresponding correct answers.',
+		'Many cards use a radial "hub" layout: a central bubble with question_text; around it two rings of labels joined by radial lines (spokes) from center outward.',
+		'Spatial rule for that layout: labels on the INNER band (closer to the center question) are options_json. Labels on the OUTER band (toward the card edge) are correct_answers_json. Each spoke pairs one inner label with one outer label—never swap an inner and outer label between the two arrays.',
+		'Order: read both rings clockwise starting at top center (12 o\'clock). options_json[i] must be the inner label at spoke i; correct_answers_json[i] must be the outer label on the SAME spoke as that inner label.',
+		'If the card is not radial, infer options as the 10 items the player chooses among (themes, prompts, entities); correct_answers_json are what satisfies question_text for each option—not the reverse.',
 		'Detect the question type from the card layout and wording. Use only these type values: standard, boolean, rank, chooseBetween, colors, numbers, centuryDecade.',
 		'Put the visible prompt in question_text. Put the small bottom-right card number in question_number, or null if unreadable.',
-		'For options_json, return the 10 visible answer prompts in their printed order.',
-		'For correct_answers_json, return one answer per option. Use booleans for boolean cards, numbers for rank and numbers cards, strings for standard, chooseBetween, and centuryDecade cards.',
+		'For options_json, return the 10 inner/choice labels in printed order (clockwise from top center). If both rings carry similar noun phrases (e.g. places vs events), rely on proximity to hub vs edge, not on topic semantics.',
+		'For correct_answers_json, return one answer per option in the same order as options_json. Use booleans for boolean cards, numbers for rank and numbers cards, strings for standard, chooseBetween, and centuryDecade cards.',
 		'For colors, return objects like {"text":"red","backgroundColor":"hsl(0 80% 50%)"}. Estimate HSL from the visible color if needed.',
 		'If text is uncertain, make the best attempt and add a concise warning. Never invent extra options.',
 	].join('\n');
