@@ -33,7 +33,9 @@
 	const isCorrect = $derived(answered === true);
 	const displayAnswer = $derived(
 		questionType === 'centuryDecade'
-			? `${correctAnswer}-talet`
+			? String(correctAnswer).includes('-talet')
+				? correctAnswer
+				: `${correctAnswer}-talet`
 			: correctAnswer,
 	);
 	const answerLabel = $derived(
