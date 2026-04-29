@@ -566,7 +566,7 @@
 								<input class="admin-input admin-option-url" type="url" bind:value={media[i].url} placeholder="URL" disabled={saving} />
 
 							{:else if type === 'numbers'}
-								<input class="admin-input admin-option-num-input" type="number" step="any" bind:value={correctAnswers[i]} placeholder="Number" disabled={saving} />
+								<input class="admin-input admin-option-num-input" type="text" bind:value={correctAnswers[i]} placeholder="Number" disabled={saving} />
 								<input class="admin-input admin-option-url" type="url" bind:value={media[i].url} placeholder="URL" disabled={saving} />
 
 							{:else if type === 'centuryDecade'}
