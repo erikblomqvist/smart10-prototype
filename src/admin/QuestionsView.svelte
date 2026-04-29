@@ -112,7 +112,7 @@
 					<span class="admin-list__name">{q.question_text}</span>
 					<span class="admin-list__meta">{q.decks?.name ?? '—'}</span>
 					<div class="admin-list__actions">
-						<button class="admin-btn admin-btn--sm" type="button" onclick={() => navigate(`/questions/${q.id}`)}>Edit</button>
+						<a class="admin-btn admin-btn--sm" href={`/admin#/questions/${q.id}`}>Edit</a>
 						<button class="admin-btn admin-btn--sm admin-btn--danger" type="button" onclick={() => deleteQuestion(q.id)}>Delete</button>
 					</div>
 				</li>
