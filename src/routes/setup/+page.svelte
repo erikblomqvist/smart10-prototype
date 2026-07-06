@@ -2,6 +2,7 @@
 	import SetupView from '$lib/views/SetupView.svelte';
 	import { goto } from '$app/navigation';
 	import { game } from '$lib/game';
+	import { clearSetupDraft } from '$lib/setupDraft.js';
 	import { _ } from 'svelte-i18n';
 
 	let loading = $state(false);
@@ -10,6 +11,7 @@
 		loading = true;
 		try {
 			await game.initGame(setup);
+			clearSetupDraft();
 			goto(`/game/${game.code}`);
 		} catch (e) {
 			console.error(e);

@@ -40,7 +40,10 @@ async function addPlayerViaButton(name) {
 }
 
 describe('SetupView — add-row auto-commit', () => {
-	afterEach(() => cleanup());
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+	});
 
 	const defaults = {
 		oninit: () => {},
@@ -94,5 +97,58 @@ describe('SetupView — add-row auto-commit', () => {
 		await fireEvent.click(continueButton());
 
 		expect(screen.getByText('1 / 2')).toBeTruthy();
+	});
+});
+
+// The iPad kills and reloads the PWA's WebKit process under memory pressure;
+// unmount + fresh mount is the component-seam equivalent of that reload.
+describe('SetupView — draft survives a reload', () => {
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+	});
+
+	const defaults = {
+		oninit: () => {},
+		onback: () => {},
+	};
+
+	it('restores added players after a remount', async () => {
+		render(SetupView, { props: defaults });
+		await addPlayerViaButton('Alice');
+		await addPlayerViaButton('Bob');
+
+		cleanup();
+		render(SetupView, { props: defaults });
+
+		expect(screen.getByDisplayValue('Alice')).toBeTruthy();
+		expect(screen.getByDisplayValue('Bob')).toBeTruthy();
+	});
+
+	it('restores the current step after a remount', async () => {
+		render(SetupView, { props: defaults });
+		await addPlayerViaButton('Alice');
+		await addPlayerViaButton('Bob');
+		await fireEvent.click(continueButton());
+		expect(screen.getByText('1 / 2')).toBeTruthy();
+
+		cleanup();
+		render(SetupView, { props: defaults });
+
+		expect(screen.getByText('1 / 2')).toBeTruthy();
+	});
+
+	it('discards the draft when backing out of setup', async () => {
+		const onback = vi.fn();
+		render(SetupView, { props: { ...defaults, onback } });
+		await addPlayerViaButton('Alice');
+
+		await fireEvent.click(screen.getByText('setup.back'));
+		expect(onback).toHaveBeenCalled();
+
+		cleanup();
+		render(SetupView, { props: defaults });
+
+		expect(screen.queryByDisplayValue('Alice')).toBeNull();
 	});
 });

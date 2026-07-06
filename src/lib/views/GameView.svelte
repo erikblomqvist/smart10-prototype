@@ -18,6 +18,11 @@
 	} from '$lib/hooks/useSpringDrag.svelte.js';
 	import { useGameInteractionLock } from '$lib/hooks/useGameInteractionLock.js';
 	import { ENABLE_STREAK_ANIMATIONS } from '$lib/streakConfig.js';
+	import {
+		savePendingReveal,
+		loadPendingReveal,
+		clearPendingReveal,
+	} from '$lib/game/pendingReveal.js';
 
 	/** @type {{ onstartover: () => void }} */
 	let { onstartover } = $props();
@@ -247,7 +252,23 @@
 		);
 	}
 
-	onMount(() => clearStreakCelebration);
+	onMount(() => {
+		// Reopen the answer dialog if a reveal was pending when the app was
+		// killed and reloaded (iOS memory pressure), so the group does not
+		// lose the tapped blob.
+		if (game.status === 'playing' && game.code && game.currentRound) {
+			const blobIndex = loadPendingReveal({
+				code: game.code,
+				roundNumber: game.currentRound.roundNumber,
+			});
+			if (blobIndex !== null && game.blobStates[blobIndex] === null) {
+				pendingBlobIndex = blobIndex;
+				dialogOpen = true;
+			}
+		}
+
+		return clearStreakCelebration;
+	});
 
 	$effect(() => {
 		const roundNumber = game.currentRound?.roundNumber;
@@ -335,6 +356,15 @@
 		if (streakCelebrationActive) return;
 		pendingBlobIndex = blobIndex;
 		dialogOpen = true;
+		// The reveal reaches Supabase only after Correct/Wrong is tapped, so
+		// record it locally in case the app is killed and reloaded meanwhile.
+		if (game.code && game.currentRound) {
+			savePendingReveal({
+				code: game.code,
+				roundNumber: game.currentRound.roundNumber,
+				blobIndex,
+			});
+		}
 	}
 
 	function handleUndoBlobClick(/** @type {number} */ blobIndex) {
@@ -351,6 +381,7 @@
 
 	function handleDialogResult(/** @type {boolean} */ isCorrect) {
 		dialogOpen = false;
+		clearPendingReveal();
 		if (pendingBlobIndex !== null) {
 			const shouldDeferAdvance =
 				ENABLE_STREAK_ANIMATIONS &&

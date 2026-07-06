@@ -8,6 +8,11 @@
 		PLAYER_COLORS,
 	} from '$lib/playerIcons.js';
 	import { supabase } from '$lib/supabase.js';
+	import {
+		loadSetupDraft,
+		saveSetupDraft,
+		clearSetupDraft,
+	} from '$lib/setupDraft.js';
 	import SetupStepShell from '$lib/components/setup/SetupStepShell.svelte';
 	import SetupPlayersStep from '$lib/components/setup/SetupPlayersStep.svelte';
 	import SetupSeatingStep from '$lib/components/setup/SetupSeatingStep.svelte';
@@ -23,10 +28,14 @@
 	 * @typedef {{ players: SetupPlayer[], selectedDeckIds: string[], startingPlayerIndex: number, turnTimerSeconds: number|null, volcanoRumble: boolean, winScore: number }} GameSetup
 	 */
 
+	// Restore an unfinished setup after an unexpected reload (iOS kills and
+	// reloads the standalone web app's WebKit process under memory pressure).
+	const draft = loadSetupDraft();
+
 	// --- Navigation ---
 	let step = $state(
 		/** @type {'players'|'seating'|'decks'|'rules'|'starting'} */ (
-			'players'
+			draft?.step ?? 'players'
 		),
 	);
 
@@ -44,6 +53,7 @@
 
 	function goBack() {
 		if (step === 'players') {
+			clearSetupDraft();
 			onback();
 		} else if (step === 'seating') {
 			players = players.map((p) => ({
@@ -69,10 +79,10 @@
 	}
 
 	// --- Players step ---
-	let players = $state(/** @type {SetupPlayer[]} */ ([]));
-	let newName = $state('');
-	let newIcon = $state(BASE_PLAYER_ICONS[0].id);
-	let newColor = $state(PLAYER_COLORS[0].id);
+	let players = $state(/** @type {SetupPlayer[]} */ (draft?.players ?? []));
+	let newName = $state(draft?.newName ?? '');
+	let newIcon = $state(draft?.newIcon ?? BASE_PLAYER_ICONS[0].id);
+	let newColor = $state(draft?.newColor ?? PLAYER_COLORS[0].id);
 
 	// Easter-egg unlock state — ephemeral, scoped to this setup session.
 	// Resets when SetupView unmounts (leaving setup); persists across
@@ -165,7 +175,7 @@
 	}
 
 	// --- Seating step ---
-	let currentSeatingIdx = $state(0);
+	let currentSeatingIdx = $state(draft?.currentSeatingIdx ?? 0);
 	const currentSeatingPlayer = $derived(players[currentSeatingIdx] ?? null);
 
 	function claimSeat(/** @type {number} */ position) {
@@ -193,7 +203,9 @@
 	/** @type {Deck[]} */
 	let decks = $state([]);
 	let decksLoading = $state(true);
-	let selectedDeckIds = $state(/** @type {string[]} */ ([]));
+	let selectedDeckIds = $state(
+		/** @type {string[]} */ (draft?.selectedDeckIds ?? []),
+	);
 
 	$effect(() => {
 		if (!supabase) {
@@ -256,13 +268,15 @@
 	}
 
 	// --- Rules step ---
-	let timerEnabled = $state(false);
-	let timerSeconds = $state(60);
-	let volcanoRumble = $state(false);
-	let winScore = $state(50);
+	let timerEnabled = $state(draft?.timerEnabled ?? false);
+	let timerSeconds = $state(draft?.timerSeconds ?? 60);
+	let volcanoRumble = $state(draft?.volcanoRumble ?? false);
+	let winScore = $state(draft?.winScore ?? 50);
 
 	// --- Starting player step ---
-	let startingPlayerIdx = $state(/** @type {number|null} */ (null));
+	let startingPlayerIdx = $state(
+		/** @type {number|null} */ (draft?.startingPlayerIdx ?? null),
+	);
 	const sortedPlayers = $derived(
 		[...players].sort((a, b) => (a.turnOrder ?? 0) - (b.turnOrder ?? 0)),
 	);
@@ -270,6 +284,26 @@
 	function randomize() {
 		startingPlayerIdx = Math.floor(Math.random() * players.length);
 	}
+
+	// Keep the draft in sync with every setup change so nothing is lost if
+	// the app is killed and reloaded mid-setup. The successful-init path
+	// clears it (see routes/setup/+page.svelte); backing out clears it above.
+	$effect(() => {
+		saveSetupDraft({
+			step,
+			players: $state.snapshot(players),
+			newName,
+			newIcon,
+			newColor,
+			currentSeatingIdx,
+			selectedDeckIds: $state.snapshot(selectedDeckIds),
+			timerEnabled,
+			timerSeconds,
+			volcanoRumble,
+			winScore,
+			startingPlayerIdx,
+		});
+	});
 
 	function handleComplete() {
 		const idx =
