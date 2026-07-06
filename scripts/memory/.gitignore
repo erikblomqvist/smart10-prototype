@@ -1,0 +1,7 @@
+# Harness deps are installed on demand, not committed.
+node_modules/
+bun.lock
+
+# Run artifacts.
+*.csv
+*.png

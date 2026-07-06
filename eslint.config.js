@@ -36,6 +36,9 @@ export default [
 			'.claude/',
 			'.svelte-kit/',
 			'.vercel/',
+			// Standalone dev tool with its own package.json and Bun/Node/browser
+			// globals; linted (and installed) independently of the app.
+			'scripts/memory/',
 		],
 	},
 ];

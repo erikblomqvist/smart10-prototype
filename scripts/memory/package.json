@@ -1,0 +1,15 @@
+{
+	"name": "clever11-memory-harness",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Standalone memory-measurement harness for Clever 11. Not part of the app's dependency graph — install separately with `bun install` in this directory.",
+	"scripts": {
+		"loop": "node gameloop.mjs",
+		"stub": "bun stub-supabase.mjs",
+		"heapchain": "node --max-old-space-size=8192 heapchain.mjs"
+	},
+	"devDependencies": {
+		"playwright": "^1.61.1"
+	}
+}
