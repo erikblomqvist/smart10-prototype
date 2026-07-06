@@ -30,6 +30,15 @@ export default [
 		},
 	},
 	{
+		// Vitest tests run in Node, so they may reach for Node globals.
+		files: ['**/*.test.{js,ts}'],
+		languageOptions: {
+			globals: {
+				...globals.node,
+			},
+		},
+	},
+	{
 		ignores: [
 			'dist/',
 			'node_modules/',

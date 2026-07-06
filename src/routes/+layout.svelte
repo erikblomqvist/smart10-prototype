@@ -41,6 +41,25 @@
 	});
 </script>
 
+<!--
+	Game/landing scope owns a root-scoped web app manifest so an iPadOS
+	process-kill relaunch reads as a dark blink instead of a white flash.
+	The Inbox ships its own narrower-scoped manifest (see its +layout.svelte);
+	gate on !skipShell so the two never fight over scope. See issue #84.
+-->
+<svelte:head>
+	{#if !skipShell}
+		<link rel="manifest" href="/game.webmanifest" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<meta name="apple-mobile-web-app-title" content="Clever 11" />
+	{/if}
+</svelte:head>
+
 {#if i18nReady}
 	<GameToaster />
 	{#if skipShell}

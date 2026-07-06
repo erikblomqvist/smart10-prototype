@@ -118,6 +118,9 @@
 body {
 	margin: 0;
 	font-family: var(--font-family-primary);
+	/* Dark fallback behind every scope so an iPadOS process-kill relaunch
+	   never flashes white before app CSS paints. See issue #84. */
+	background-color: #0f1115;
 }
 
 html.game-interaction-lock,
