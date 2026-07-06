@@ -27,6 +27,50 @@ export function getSeatRotationTurns(/** @type {number} */ seatPosition) {
 	return ((seatPosition + 4) % 8) / 8;
 }
 
+/**
+ * True when every player in the intro path occupies the same seat position, so
+ * the travelling intro would be a visual no-op (a group sharing one device that
+ * never physically rotates). Returns false for an empty path.
+ */
+export function playersShareSeatPosition(
+	/** @type {{ seatPosition: number }[]} */ players,
+) {
+	if (players.length === 0) return false;
+	const first = players[0].seatPosition;
+	return players.every((player) => player.seatPosition === first);
+}
+
+/**
+ * Build the ordered list of seat stops the intro travels through: the active
+ * players in clockwise turn order starting from the starter, with the starter
+ * appended again as the final landing stop. Removed players are excluded — they
+ * take no turns, so they are neither a stop nor counted when deciding whether
+ * everyone shares a seat. Returns an empty path when there is nobody to travel
+ * between (starter missing, or one active player or fewer).
+ */
+export function buildIntroPlayerPath(
+	/** @type {{ id: string, seatPosition: number, turnOrder: number, status?: string }[]} */ players,
+	/** @type {{ id: string, seatPosition: number }} */ starter,
+) {
+	const sortedPlayers = [...players]
+		.filter((player) => player.status !== 'removed')
+		.sort((a, b) => a.turnOrder - b.turnOrder);
+	const starterIndex = sortedPlayers.findIndex(
+		(player) => player.id === starter.id,
+	);
+
+	if (starterIndex === -1 || sortedPlayers.length <= 1) {
+		return [];
+	}
+
+	const rotatedPlayers = [
+		...sortedPlayers.slice(starterIndex),
+		...sortedPlayers.slice(0, starterIndex),
+	];
+
+	return [...rotatedPlayers, starter];
+}
+
 function getQuestionReadingMs(/** @type {string} */ text) {
 	return clamp(
 		INTRO_READING_BASE_MS + text.length * INTRO_READING_MS_PER_CHARACTER,
@@ -94,23 +138,7 @@ export function useRoundIntro() {
 	function getIntroPlayerPath(
 		/** @type {{ id: string, seatPosition: number }} */ starter,
 	) {
-		const sortedPlayers = [...game.players].sort(
-			(a, b) => a.turnOrder - b.turnOrder,
-		);
-		const starterIndex = sortedPlayers.findIndex(
-			(player) => player.id === starter.id,
-		);
-
-		if (starterIndex === -1 || sortedPlayers.length <= 1) {
-			return [];
-		}
-
-		const rotatedPlayers = [
-			...sortedPlayers.slice(starterIndex),
-			...sortedPlayers.slice(0, starterIndex),
-		];
-
-		return [...rotatedPlayers, starter];
+		return buildIntroPlayerPath(game.players, starter);
 	}
 
 	function getForwardRotationTarget(
@@ -140,6 +168,16 @@ export function useRoundIntro() {
 	) {
 		const playerPath = getIntroPlayerPath(starter);
 		if (!playerPath.length) return false;
+
+		// When everyone shares a seat the wheel never rotates between turns, so
+		// the travelling intro would just spin a full revolution per player and
+		// land where it began. Skip it: clear any intro rotation (so the wheel
+		// falls back to its static seat rotation) but report success, so the
+		// round is marked as handled and not retried on the next reactive tick.
+		if (playersShareSeatPosition(playerPath)) {
+			reset();
+			return true;
+		}
 
 		clearIntroTimers();
 		clearIntroResetFrames();
